@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://modrinth.com/mod/server-os"><img src="https://img.shields.io/modrinth/game-versions/server-os?style=for-the-badge&logo=modrinth&label=Minecraft&color=2E7D32" alt="Minecraft versions"></a>
+  <img src="https://img.shields.io/badge/Minecraft-26.2-2E7D32?style=for-the-badge&logo=minecraft" alt="Minecraft 26.2">
   <img src="https://img.shields.io/badge/Fabric-0.19.3%2B-1769aa?style=for-the-badge&logo=fabric" alt="Fabric">
   <img src="https://img.shields.io/badge/Java-25%2B-orange?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 25+">
 </p>
