@@ -107,7 +107,7 @@ body:
     attributes:
       label: DedicatedPower version or commit
       description: Include the release version, build artifact version, or Git commit you are using.
-      placeholder: "1.21.11-1.0 or abc1234"
+      placeholder: "26.2-1.0.0-beta or abc1234"
     validations:
       required: true
 
@@ -115,7 +115,7 @@ body:
     id: minecraft-version
     attributes:
       label: Minecraft version
-      description: Include the exact version, for example 26.2 or 1.21.11.
+      description: Include the exact version, for example 26.2.
       placeholder: "26.2"
     validations:
       required: true
