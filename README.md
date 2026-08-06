@@ -7,12 +7,12 @@
 <p align="center">
   <a href="https://modrinth.com/mod/server-os"><img src="https://img.shields.io/badge/Modrinth-DedicatedPower-00AF5C?style=for-the-badge&logo=modrinth" alt="Modrinth"></a>
   <a href="https://modrinth.com/mod/server-os"><img src="https://img.shields.io/modrinth/dt/server-os?style=for-the-badge&logo=modrinth&label=Downloads&color=00AF5C" alt="Modrinth downloads"></a>
-  <a href="https://github.com/PiBOH/DedicatedPower/releases"><img src="https://img.shields.io/github/v/release/PiBOH/DedicatedPower?style=for-the-badge&logo=github&label=Release" alt="Release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT license"></a>
+  <a href="https://github.com/PiBOH/DedicatedPower/releases"><img src="https://img.shields.io/github/v/release/PiBOH/DedicatedPower?include_prereleases&style=for-the-badge&logo=github&label=Release" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/PiBOH/DedicatedPower?style=for-the-badge&label=License" alt="License"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-26.2-2E7D32?style=for-the-badge&logo=minecraft" alt="Minecraft 26.2">
+  <a href="https://modrinth.com/mod/server-os"><img src="https://img.shields.io/modrinth/game-versions/server-os?style=for-the-badge&logo=modrinth&label=Minecraft&color=2E7D32" alt="Minecraft versions"></a>
   <img src="https://img.shields.io/badge/Fabric-0.19.3%2B-1769aa?style=for-the-badge&logo=fabric" alt="Fabric">
   <img src="https://img.shields.io/badge/Java-25%2B-orange?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 25+">
 </p>
