@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://modrinth.com/mod/server-os"><img src="https://img.shields.io/badge/Modrinth-DedicatedPower-00AF5C?style=for-the-badge&logo=modrinth" alt="Modrinth"></a>
   <a href="https://modrinth.com/mod/server-os"><img src="https://img.shields.io/modrinth/dt/server-os?style=for-the-badge&logo=modrinth&label=Downloads&color=00AF5C" alt="Modrinth downloads"></a>
+  <a href="https://modrinth.com/mod/server-os"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.modrinth.com%2Fv2%2Fproject%2Fserver-os%2Fversion&query=%24%5B0%5D.version_number&label=Modrinth&logo=modrinth&color=00AF5C&style=for-the-badge" alt="Modrinth version"></a>
   <a href="https://github.com/PiBOH/DedicatedPower/releases"><img src="https://img.shields.io/github/v/release/PiBOH/DedicatedPower?include_prereleases&style=for-the-badge&logo=github&label=Release" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/PiBOH/DedicatedPower?style=for-the-badge&label=License" alt="License"></a>
 </p>
