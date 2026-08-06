@@ -32,7 +32,7 @@ public class EnhancedPlayerStatsGui extends JComponent {
     }
 
     private void updateStats() {
-        double tickMs = server.getCurrentSmoothedTickTime() / 1_000_000.0;
+        double tickMs = server.getAverageTickTimeNanos() / 1_000_000.0;
         double tps = tickMs <= 0.0 ? 20.0 : Math.min(20.0, 1000.0 / tickMs);
         status = String.format(Locale.ROOT,
                 "TPS: %.2f / 20.0    Average tick: %.2f ms    Players: %d    Levels: %d",

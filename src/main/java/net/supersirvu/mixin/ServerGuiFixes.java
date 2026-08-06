@@ -6,12 +6,15 @@
 
 package net.supersirvu.mixin;
 
+import com.mojang.logging.LogQueues;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.gui.MinecraftServerGui;
 import net.supersirvu.gui.EnhancedLogPanel;
 import net.supersirvu.gui.EnhancedPlayerListGui;
 import net.supersirvu.gui.EnhancedPlayerStatsGui;
 import net.supersirvu.gui.EnhancedServerMenuBar;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -19,6 +22,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -27,6 +31,8 @@ import java.awt.BorderLayout;
 import java.awt.Window;
 
 public final class ServerGuiFixes {
+    private static final Logger LOGGER = LoggerFactory.getLogger("DedicatedPower");
+
     private ServerGuiFixes() {
     }
 
@@ -34,8 +40,13 @@ public final class ServerGuiFixes {
     public static final class AlwaysShowGui {
         @Inject(method = "initServer", at = @At("TAIL"))
         private void dedicatedpower$showGui(CallbackInfoReturnable<Boolean> callback) {
-            if (Boolean.TRUE.equals(callback.getReturnValue())) {
+            if (!Boolean.TRUE.equals(callback.getReturnValue())) {
+                return;
+            }
+            try {
                 ((DedicatedServer) (Object) this).showGui();
+            } catch (Throwable throwable) {
+                LOGGER.error("Failed to show the enhanced server GUI", throwable);
             }
         }
     }
@@ -46,8 +57,11 @@ public final class ServerGuiFixes {
         @Final
         private DedicatedServer server;
 
+        @Shadow
+        private Thread logAppenderThread;
+
         @Inject(method = "buildInfoPanel", at = @At("HEAD"), cancellable = true)
-        private void dedicatedpower$replaceInfoPanel(CallbackInfoReturnable<javax.swing.JComponent> callback) {
+        private void dedicatedpower$replaceInfoPanel(CallbackInfoReturnable<JComponent> callback) {
             EnhancedPlayerStatsGui stats = new EnhancedPlayerStatsGui(server);
             EnhancedPlayerListGui players = new EnhancedPlayerListGui(server);
 
@@ -58,8 +72,30 @@ public final class ServerGuiFixes {
         }
 
         @Inject(method = "buildChatPanel", at = @At("HEAD"), cancellable = true)
-        private void dedicatedpower$replaceChatPanel(CallbackInfoReturnable<javax.swing.JComponent> callback) {
-            callback.setReturnValue(new EnhancedLogPanel(server));
+        private void dedicatedpower$replaceChatPanel(CallbackInfoReturnable<JComponent> callback) {
+            EnhancedLogPanel logPanel = new EnhancedLogPanel(server);
+
+            Thread monitor = new Thread(() -> {
+                while (true) {
+                    String message = LogQueues.getNextLogEvent("ServerGuiConsole");
+                    if (message != null) {
+                        logPanel.processLogMessage(message);
+                    } else {
+                        try {
+                            Thread.sleep(50L);
+                        } catch (InterruptedException interrupted) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                }
+            }, "Server log monitor");
+            monitor.setDaemon(true);
+            // The vanilla GUI calls start() on this field after the panels are built.
+            // Keeping it populated prevents a NullPointerException that would leave the window blank.
+            this.logAppenderThread = monitor;
+
+            callback.setReturnValue(logPanel);
         }
 
         @Inject(method = "showFrameFor", at = @At("TAIL"))
@@ -73,11 +109,15 @@ public final class ServerGuiFixes {
             }
 
             SwingUtilities.invokeLater(() -> {
-                Window window = SwingUtilities.getWindowAncestor(gui);
-                if (window instanceof JFrame frame) {
-                    frame.setJMenuBar(new EnhancedServerMenuBar(server, frame));
-                    frame.revalidate();
-                    frame.repaint();
+                try {
+                    Window window = SwingUtilities.getWindowAncestor(gui);
+                    if (window instanceof JFrame frame) {
+                        frame.setJMenuBar(new EnhancedServerMenuBar(server, frame));
+                        frame.revalidate();
+                        frame.repaint();
+                    }
+                } catch (Throwable throwable) {
+                    LOGGER.error("Failed to install the enhanced server menu bar", throwable);
                 }
             });
         }

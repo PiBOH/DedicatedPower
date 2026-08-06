@@ -1,6 +1,11 @@
 # DedicatedPower
 
+[![Modrinth](https://img.shields.io/badge/Modrinth-DedicatedPower-00AF5C?style=for-the-badge&logo=modrinth)](https://modrinth.com/mod/server-os)
+
 DedicatedPower is a Fabric mod that improves the graphical interface of a Minecraft dedicated server.
+
+> **Modrinth page:** <https://modrinth.com/mod/server-os>
+
 
 It replaces the default server administration window with a cleaner interface for monitoring the server, viewing online players, running commands, and accessing common server controls.
 
@@ -15,6 +20,12 @@ It replaces the default server administration window with a cleaner interface fo
 
 DedicatedPower is not intended for single-player worlds or the integrated server.
 
+## Links
+
+- [Modrinth page](https://modrinth.com/mod/server-os)
+- [GitHub repository](https://github.com/PiBOH/DedicatedPower)
+- [Releases](https://github.com/PiBOH/DedicatedPower/releases)
+
 ## Features
 
 ### Dedicated server interface
@@ -27,10 +38,11 @@ DedicatedPower is not intended for single-player worlds or the integrated server
 
 ### Console and commands
 
+- Live server log output with color-coded log levels
 - Dedicated command console panel
 - Command execution directly from the GUI
 - Command history with the Up and Down arrow keys
-- Clearable command output and history display
+- Clearable console output
 
 ### Player management
 
@@ -60,7 +72,7 @@ Always make a backup of your server before installing or updating mods.
 
 ## Usage
 
-DedicatedPower is loaded automatically when the dedicated server starts. The enhanced server window is created by the mod and can be used to monitor the server and run commands. The current console panel focuses on commands entered through the GUI; broader vanilla log forwarding may be expanded in a future update.
+DedicatedPower is loaded automatically when the dedicated server starts. The enhanced server window is created by the mod and can be used to monitor the server and run commands. The console panel streams live server log output with color-coded levels and accepts commands entered through the GUI.
 
 Use the **Server**, **World**, and **Tools** menus to access the available controls. Commands should be entered without the leading slash, for example:
 

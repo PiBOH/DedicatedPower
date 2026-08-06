@@ -59,10 +59,9 @@ public class EnhancedPlayerListGui extends JPanel {
         add(header, BorderLayout.NORTH);
         add(new JScrollPane(playerList), BorderLayout.CENTER);
         refresh();
-    }
 
-    public void tick() {
-        refresh();
+        javax.swing.Timer refreshTimer = new javax.swing.Timer(1000, event -> refresh());
+        refreshTimer.start();
     }
 
     private void refresh() {
