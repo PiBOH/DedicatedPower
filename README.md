@@ -148,3 +148,5 @@ Use the repository's [English bug report form](https://github.com/PiBOH/Dedicate
 ## License
 
 DedicatedPower is licensed under the [MIT License](LICENSE).
+
+Enjoy running your dedicated server.
