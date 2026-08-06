@@ -5,7 +5,8 @@
 	"name": "DedicatedPower",
 	"description": "Gives the dedicated server interface a new look for easier server management and more power over your server.",
 	"authors": [
-		"SuperSirvu"
+		"SuperSirvu",
+		"PiBOH"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
