@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 26.2-1.0.3-beta). Leave empty to use version.txt.'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -11,7 +18,7 @@ permissions:
 jobs:
   release:
     name: Build and publish release
-    if: startsWith(github.event.head_commit.message, 'v')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'v')
     runs-on: ubuntu-24.04
 
     steps:
@@ -37,15 +44,26 @@ jobs:
         shell: bash
         env:
           COMMIT_TITLE: ${{ github.event.head_commit.message }}
+          VERSION_INPUT: ${{ inputs.version }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
 
-          # Only the first line is used. Examples:
+          # On a push the first line of the commit message is used; on a manual
+          # dispatch the version input is used (falling back to version.txt).
+          # Examples:
           #   v26.2-1.0.0     -> stable release
           #   v26.2-1.0.0-beta -> beta prerelease
           #   v26.2-1.0.0-alpha.1 -> alpha prerelease
           #   v26.2-1.0.0-rc1 -> release-candidate prerelease
-          RELEASE_INPUT="${COMMIT_TITLE%%$'\n'*}"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            RELEASE_INPUT="${VERSION_INPUT}"
+            if [[ -z "$RELEASE_INPUT" ]]; then
+              RELEASE_INPUT="$(cat version.txt)"
+            fi
+          else
+            RELEASE_INPUT="${COMMIT_TITLE%%$'\n'*}"
+          fi
           RELEASE_INPUT="${RELEASE_INPUT#v}"
           RELEASE_INPUT="${RELEASE_INPUT// /-}"
           RELEASE_INPUT="${RELEASE_INPUT,,}"
