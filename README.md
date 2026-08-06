@@ -1,4 +1,4 @@
-# DedicatedPower
+# <img src="icon.png" alt="DedicatedPower" width="40" align="center"> DedicatedPower
 
 <p align="center">
   <a href="https://modrinth.com/mod/server-os"><img src="https://cdn.modrinth.com/data/6Ai7Gm6t/images/3d104b8b1b477919b7ac77a9c7ccf859d4abbdbe.png" alt="DedicatedPower main screen" width="720"></a>
