@@ -77,7 +77,9 @@ jobs:
             PRERELEASE=true
           fi
 
-          TAG="v${VERSION}"
+          # The release tag has no "v" prefix (e.g. 26.2-1.0.0-beta),
+          # even though the triggering commit message starts with "v".
+          TAG="${VERSION}"
           RELEASE_NAME="DedicatedPower ${VERSION}"
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
