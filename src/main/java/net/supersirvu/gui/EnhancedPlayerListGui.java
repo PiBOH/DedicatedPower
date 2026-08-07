@@ -575,7 +575,7 @@ public class EnhancedPlayerListGui extends JPanel implements ThemeManager.ThemeL
             setBackground(themeManager.getPanelBackground());
             playerList.setBackground(themeManager.getInputBackground());
             playerList.setForeground(themeManager.getForeground());
-            ThemeManager.setBackgroundRecursively(this, themeManager.getPanelBackground(), themeManager.getForeground());
+            themeManager.applyComponentTheme(this);
             playerList.setBackground(themeManager.getInputBackground());
             playerCellRenderer = new PlayerCellRenderer();
             playerList.setCellRenderer(playerCellRenderer);

@@ -1149,6 +1149,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
         for (EnhancedLogPanel.LogLevel level : EnhancedLogPanel.LogLevel.values()) {
             JLabel label = new JLabel(level.name());
             JButton colorButton = new JButton("Choose color");
+            colorButton.putClientProperty("dedicatedpower.palettePreview", Boolean.TRUE);
             colorButton.setOpaque(true);
             colorButton.setBorderPainted(true);
             colorButton.setBackground(themeManager.getLogColor(level));

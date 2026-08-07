@@ -6,7 +6,15 @@
 
 package net.supersirvu.gui;
 
+import javax.swing.AbstractButton;
 import javax.swing.JComponent;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollBar;
+import javax.swing.JSpinner;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.JList;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.awt.Color;
@@ -125,11 +133,13 @@ public final class ThemeManager {
         applySwingDefaults();
         if (window != null) {
             SwingUtilities.updateComponentTreeUI(window);
+            applyComponentTheme(window);
             window.repaint();
         }
         for (Window openWindow : Window.getWindows()) {
             if (openWindow != window && openWindow.isDisplayable()) {
                 SwingUtilities.updateComponentTreeUI(openWindow);
+                applyComponentTheme(openWindow);
                 openWindow.repaint();
             }
         }
@@ -164,6 +174,22 @@ public final class ThemeManager {
         UIManager.put("MenuItem.foreground", foreground);
         UIManager.put("Button.background", surface);
         UIManager.put("Button.foreground", foreground);
+        UIManager.put("Button.select", isDark() ? new Color(75, 95, 120) : new Color(210, 225, 245));
+        UIManager.put("Button.focus", border);
+        UIManager.put("CheckBox.background", panel);
+        UIManager.put("CheckBox.foreground", foreground);
+        UIManager.put("RadioButton.background", panel);
+        UIManager.put("RadioButton.foreground", foreground);
+        UIManager.put("Spinner.background", input);
+        UIManager.put("Spinner.foreground", foreground);
+        UIManager.put("ComboBox.background", input);
+        UIManager.put("ComboBox.foreground", foreground);
+        UIManager.put("List.selectionBackground", getSelectionBackground());
+        UIManager.put("List.selectionForeground", foreground);
+        UIManager.put("Table.selectionBackground", getSelectionBackground());
+        UIManager.put("Table.selectionForeground", foreground);
+        UIManager.put("ScrollBar.background", surface);
+        UIManager.put("ScrollBar.foreground", foreground);
         UIManager.put("OptionPane.background", panel);
         UIManager.put("OptionPane.messageForeground", foreground);
         UIManager.put("Separator.foreground", border);
@@ -238,6 +264,48 @@ public final class ThemeManager {
             }
         } catch (IOException ignored) {
             // Appearance changes remain active for this session even if persistence fails.
+        }
+    }
+
+    /**
+     * Applies explicit colors to already-created Swing controls. UIManager values
+     * only affect newly-created controls for some Look & Feels, so this pass is
+     * required when the user switches theme while the GUI is open.
+     */
+    public void applyComponentTheme(Component component) {
+        Color panel = getPanelBackground();
+        Color surface = getSurfaceBackground();
+        Color input = getInputBackground();
+        Color foreground = getForeground();
+        Color border = getBorderColor();
+
+        if (component instanceof AbstractButton button) {
+            if (!Boolean.TRUE.equals(button.getClientProperty("dedicatedpower.palettePreview"))) {
+                button.setBackground(surface);
+            }
+            button.setForeground(foreground);
+        } else if (component instanceof JSpinner spinner) {
+            spinner.setBackground(input);
+            spinner.setForeground(foreground);
+            setBackgroundRecursively(spinner, input, foreground);
+        } else if (component instanceof JTextField || component instanceof JTextArea || component instanceof JList<?> || component instanceof JTable) {
+            component.setBackground(input);
+            component.setForeground(foreground);
+        } else if (component instanceof JScrollBar scrollBar) {
+            scrollBar.setBackground(surface);
+            scrollBar.setForeground(foreground);
+        } else if (component instanceof JPopupMenu) {
+            component.setBackground(surface);
+            component.setForeground(foreground);
+        } else if (component instanceof JComponent swingComponent) {
+            swingComponent.setBackground(panel);
+            swingComponent.setForeground(foreground);
+        }
+
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                applyComponentTheme(child);
+            }
         }
     }
 
