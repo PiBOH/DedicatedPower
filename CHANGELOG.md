@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.4-beta] - 2026-08-07
+
+### Fixed
+- Fixed command input caret positioning so the first typed character no longer moves to the end of the command
+- Deferred autocomplete until after Swing finishes the text mutation and ignored stale asynchronous suggestions
+
 ## [26.2-1.2.3-beta] - 2026-08-07
 
 ### Fixed

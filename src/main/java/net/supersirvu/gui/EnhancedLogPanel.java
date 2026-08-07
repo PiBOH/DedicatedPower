@@ -48,6 +48,7 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     private JList<SuggestionItem> suggestionList;
     private CompletableFuture<Suggestions> pendingSuggestions;
     private Suggestions currentSuggestions;
+    private long suggestionGeneration;
     private CommandDocumentListener documentListener;
 
     // Command history
@@ -343,13 +344,14 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     }
 
     private void updateSuggestions() {
+        long generation = ++suggestionGeneration;
         String text = commandInput.getText();
         if (text.isEmpty()) {
             hideSuggestions();
             return;
         }
 
-        // Validate command syntax
+        // Validate command syntax after Swing has completed the document change.
         validateCommand(text);
 
         try {
@@ -366,6 +368,11 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
             pendingSuggestions = dispatcher.getCompletionSuggestions(parse, cursorPos);
             pendingSuggestions.thenAccept(suggestions -> {
                 SwingUtilities.invokeLater(() -> {
+                    // Ignore completions calculated for an older text/caret state.
+                    // They must never overwrite the user's current typing state.
+                    if (generation != suggestionGeneration || !text.equals(commandInput.getText())) {
+                        return;
+                    }
                     suggestionModel.clear();
                     currentSuggestions = suggestions;
 
@@ -384,8 +391,13 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                     }
                 });
             }).exceptionally(throwable -> {
-                // Silently handle suggestion errors
-                SwingUtilities.invokeLater(() -> hideSuggestions());
+                // A failed request may also be stale; do not hide a popup created
+                // for newer input.
+                SwingUtilities.invokeLater(() -> {
+                    if (generation == suggestionGeneration && text.equals(commandInput.getText())) {
+                        hideSuggestions();
+                    }
+                });
                 return null;
             });
         } catch (Exception e) {
@@ -655,17 +667,23 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     private class CommandDocumentListener implements DocumentListener {
         @Override
         public void insertUpdate(DocumentEvent e) {
-            updateSuggestions();
+            deferSuggestionUpdate();
         }
 
         @Override
         public void removeUpdate(DocumentEvent e) {
-            updateSuggestions();
+            deferSuggestionUpdate();
         }
 
         @Override
         public void changedUpdate(DocumentEvent e) {
-            updateSuggestions();
+            deferSuggestionUpdate();
+        }
+
+        private void deferSuggestionUpdate() {
+            // Document notifications happen before JTextField advances its caret.
+            // Run after the mutation so autocomplete sees the final caret position.
+            SwingUtilities.invokeLater(EnhancedLogPanel.this::updateSuggestions);
         }
     }
 
