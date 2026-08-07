@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.2-beta] - 2026-08-07
+
+### Fixed
+- `/opengui` now reuses and brings forward an existing GUI instead of opening duplicate windows
+- `Close GUI Only` now hides the existing window so `/opengui` can reopen it later, including when the server was started with `--nogui`
+
 ## [26.2-1.2.1-beta] - 2026-08-07
 
 ### Added

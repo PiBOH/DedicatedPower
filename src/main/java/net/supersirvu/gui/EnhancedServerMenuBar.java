@@ -1878,9 +1878,19 @@ public class EnhancedServerMenuBar extends JMenuBar {
 
         frame.addWindowListener(new WindowAdapter() {
             @Override
+            public void windowClosed(WindowEvent event) {
+                // Keep the shared lifecycle state accurate if another path disposes
+                // the frame instead of using the custom close dialog.
+                if (net.supersirvu.ServerGuiState.getFrame() == frame) {
+                    net.supersirvu.ServerGuiState.setFrame(null);
+                }
+            }
+
+            @Override
             public void windowClosing(WindowEvent event) {
                 // If the server has already stopped, just close the window without asking.
                 if (!server.isRunning()) {
+                    net.supersirvu.ServerGuiState.setFrame(null);
                     frame.dispose();
                     return;
                 }
@@ -1901,9 +1911,12 @@ public class EnhancedServerMenuBar extends JMenuBar {
                         options[0]
                 );
                 if (choice == 0) {
-                    // Close only the GUI window; the server keeps running in the background.
-                    frame.dispose();
+                    // Hide only the GUI window; retain the frame so /opengui can
+                    // show the same window again without creating a duplicate.
+                    frame.setVisible(false);
                 } else if (choice == 1) {
+                    // The server is shutting down; do not retain a reusable GUI frame.
+                    net.supersirvu.ServerGuiState.setFrame(null);
                     // Gracefully stop the server on a background thread: the GUI stays
                     // responsive (the log keeps updating) while worlds are saved, then
                     // the JVM exits as soon as the server has fully stopped.

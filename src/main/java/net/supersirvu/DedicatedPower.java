@@ -13,8 +13,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.server.gui.MinecraftServerGui;
 
 import java.awt.GraphicsEnvironment;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,17 +61,45 @@ public class DedicatedPower implements ModInitializer {
 						return 0;
 					}
 
+					// Reuse the existing enhanced frame when it was hidden with
+					// "Close GUI Only". This avoids duplicate windows and works both
+					// for normal startup and for servers launched with --nogui.
+					if (showExistingFrame()) {
+						context.getSource().sendSuccess(() -> Component.literal("The DedicatedPower GUI is already open; bringing it to the front."), false);
+						return 1;
+					}
+					if (!ServerGuiState.beginOpening()) {
+						context.getSource().sendSuccess(() -> Component.literal("The DedicatedPower GUI is already opening."), false);
+						return 1;
+					}
+
 					// --nogui suppresses automatic startup only. DedicatedServer.showGui()
 					// is the explicit opt-in path used by this command and is idempotent.
 					try {
-						// Vanilla invokes showGui from the server lifecycle thread. Keep the
-						// same ownership model when opening explicitly after --nogui.
-						server.showGui();
+						// Call the frame factory directly when the old frame was disposed.
+						// This also bypasses DedicatedServer's stale private gui field.
+						MinecraftServerGui.showFrameFor(server);
 					} catch (Throwable throwable) {
+						ServerGuiState.endOpening();
 						LOGGER.error("Failed to open the DedicatedPower GUI from /opengui", throwable);
 					}
 					context.getSource().sendSuccess(() -> Component.literal("Opening the DedicatedPower GUI..."), false);
 					return 1;
 				}));
+	}
+
+	private static boolean showExistingFrame() {
+		JFrame existingFrame = ServerGuiState.getFrame();
+		if (existingFrame == null) {
+			return false;
+		}
+		SwingUtilities.invokeLater(() -> {
+			if (existingFrame.isDisplayable()) {
+				existingFrame.setVisible(true);
+				existingFrame.toFront();
+				existingFrame.requestFocus();
+			}
+		});
+		return true;
 	}
 }

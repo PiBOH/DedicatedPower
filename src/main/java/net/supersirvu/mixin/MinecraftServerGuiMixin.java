@@ -90,17 +90,22 @@ public class MinecraftServerGuiMixin {
             try {
                 Window window = SwingUtilities.getWindowAncestor(gui);
                 if (window instanceof JFrame frame) {
+                    ServerGuiState.setFrame(frame);
                     try {
                         frame.setJMenuBar(new EnhancedServerMenuBar(server, frame));
                         EnhancedServerMenuBar.installCloseConfirmation(frame, server);
                     } finally {
+                        ServerGuiState.endOpening();
                         // Always re-layout and repaint so the menu bar is visible even
                         // if the menu or close-confirmation setup fails for any reason.
                         frame.revalidate();
                         frame.repaint();
                     }
+                } else {
+                    ServerGuiState.endOpening();
                 }
             } catch (Throwable throwable) {
+                ServerGuiState.endOpening();
                 ServerGuiState.LOGGER.error("Failed to install the enhanced server menu bar", throwable);
             }
         });

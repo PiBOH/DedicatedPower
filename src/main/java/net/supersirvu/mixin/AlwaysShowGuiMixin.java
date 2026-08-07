@@ -29,9 +29,14 @@ public final class AlwaysShowGuiMixin {
             return;
         }
 
+        if (!ServerGuiState.beginOpening()) {
+            return;
+        }
+
         try {
             ((DedicatedServer) (Object) this).showGui();
         } catch (Throwable throwable) {
+            ServerGuiState.endOpening();
             ServerGuiState.LOGGER.error("Failed to show the enhanced server GUI", throwable);
         }
     }
