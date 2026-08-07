@@ -7,6 +7,7 @@
 package net.supersirvu.mixin;
 
 import com.mojang.logging.LogQueues;
+import net.minecraft.server.Main;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.gui.MinecraftServerGui;
 import net.supersirvu.gui.EnhancedLogPanel;
@@ -20,6 +21,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.swing.JComponent;
@@ -28,12 +30,37 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
+import java.awt.GraphicsEnvironment;
 import java.awt.Window;
 
 public final class ServerGuiFixes {
     private static final Logger LOGGER = LoggerFactory.getLogger("DedicatedPower");
 
+    /** True when the server was launched with --nogui; the GUI must not be forced. */
+    private static volatile boolean noGuiRequested;
+
+    static boolean isNoGuiRequested() {
+        return noGuiRequested;
+    }
+
     private ServerGuiFixes() {
+    }
+
+    @Mixin(Main.class)
+    public static final class CaptureNoGui {
+        @Inject(method = "main", at = @At("HEAD"))
+        private static void dedicatedpower$captureNoGui(String[] args, CallbackInfo callback) {
+            if (args == null) {
+                return;
+            }
+            for (String arg : args) {
+                // Accepts "nogui", "--nogui" and "-nogui", matching joptsimple usage.
+                if (arg != null && arg.replace("-", "").equalsIgnoreCase("nogui")) {
+                    noGuiRequested = true;
+                    return;
+                }
+            }
+        }
     }
 
     @Mixin(DedicatedServer.class)
@@ -41,6 +68,11 @@ public final class ServerGuiFixes {
         @Inject(method = "initServer", at = @At("TAIL"))
         private void dedicatedpower$showGui(CallbackInfoReturnable<Boolean> callback) {
             if (!Boolean.TRUE.equals(callback.getReturnValue())) {
+                return;
+            }
+            // Respect the --nogui launch option and headless environments, exactly like
+            // vanilla does in Main.main, so the enhanced GUI is never forced open.
+            if (isNoGuiRequested() || GraphicsEnvironment.isHeadless()) {
                 return;
             }
             try {
