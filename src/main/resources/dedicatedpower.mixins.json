@@ -3,9 +3,9 @@
   "package": "net.supersirvu.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
-    "ServerGuiFixes$CaptureNoGui",
-    "ServerGuiFixes$AlwaysShowGui",
-    "ServerGuiFixes$MinecraftServerGuiMixin"
+    "CaptureNoGuiMixin",
+    "AlwaysShowGuiMixin",
+    "MinecraftServerGuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1
