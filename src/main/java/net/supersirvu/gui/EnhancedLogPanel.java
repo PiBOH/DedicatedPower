@@ -41,6 +41,11 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     private final JTextField commandInput;
     private final JScrollPane logScrollPane;
     private final StyledDocument logDocument;
+    private boolean followLogBottom = true;
+    private boolean updatingLogDisplay;
+    private boolean autoScrollPending;
+    private boolean programmaticScroll;
+    private long scrollGeneration;
 
     // Command suggestion
     private JWindow suggestionWindow;
@@ -94,6 +99,29 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
 
         logScrollPane = new JScrollPane(logTextPane);
         logScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        JScrollBar verticalScrollBar = logScrollPane.getVerticalScrollBar();
+        verticalScrollBar.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent event) {
+                if (!programmaticScroll) {
+                    autoScrollPending = false;
+                    scrollGeneration++;
+                    updateFollowLogBottom();
+                }
+            }
+        });
+        logScrollPane.addMouseWheelListener(event -> {
+            if (!programmaticScroll) {
+                autoScrollPending = false;
+                scrollGeneration++;
+                SwingUtilities.invokeLater(EnhancedLogPanel.this::updateFollowLogBottom);
+            }
+        });
+        verticalScrollBar.addAdjustmentListener(event -> {
+            if (!programmaticScroll && !autoScrollPending) {
+                updateFollowLogBottom();
+            }
+        });
 
         // Create command input
         commandInput = new JTextField();
@@ -312,6 +340,11 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     }
 
     private void displayLogEntry(LogEntry entry) {
+        boolean shouldFollow = followLogBottom;
+        if (shouldFollow) {
+            autoScrollPending = true;
+        }
+        updatingLogDisplay = true;
         try {
             // Add log level tag
             String levelTag = "[" + (entry.level == LogLevel.CHAT ? "CHAT" : "SERVER LOG") + "] ";
@@ -321,6 +354,12 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
             logDocument.insertString(logDocument.getLength(), entry.message + "\n", logStyles.get(entry.level));
         } catch (BadLocationException e) {
             e.printStackTrace();
+        } finally {
+            updatingLogDisplay = false;
+        }
+        if (shouldFollow) {
+            followLogBottom = true;
+            scrollLogToBottom();
         }
     }
 
@@ -565,6 +604,41 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                 displayLogEntry(entry);
             }
         }
+        if (followLogBottom) {
+            scrollLogToBottom();
+        }
+    }
+
+    private void updateFollowLogBottom() {
+        if (updatingLogDisplay || autoScrollPending || programmaticScroll) {
+            return;
+        }
+        BoundedRangeModel model = logScrollPane.getVerticalScrollBar().getModel();
+        int distanceFromBottom = model.getMaximum() - model.getValue() - model.getExtent();
+        followLogBottom = distanceFromBottom <= 4;
+    }
+
+    private void scrollLogToBottom() {
+        long generation = scrollGeneration;
+        SwingUtilities.invokeLater(() -> {
+            if (generation != scrollGeneration || !followLogBottom) {
+                autoScrollPending = false;
+                return;
+            }
+            JScrollBar scrollBar = logScrollPane.getVerticalScrollBar();
+            BoundedRangeModel model = scrollBar.getModel();
+            updatingLogDisplay = true;
+            programmaticScroll = true;
+            try {
+                scrollBar.setValue(Math.max(0, model.getMaximum() - model.getExtent()));
+            } finally {
+                programmaticScroll = false;
+                updatingLogDisplay = false;
+                // Let layout notifications caused by this operation finish before
+                // automatic/manual scroll detection becomes active again.
+                SwingUtilities.invokeLater(() -> autoScrollPending = false);
+            }
+        });
     }
 
     private void exportLogs() {

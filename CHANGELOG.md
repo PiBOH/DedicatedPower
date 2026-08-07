@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.5-beta] - 2026-08-07
+
+### Fixed
+- Console output now follows the newest log automatically until the user scrolls upward
+- Returning the scrollbar to the bottom automatically re-enables follow-bottom mode
+
 ## [26.2-1.2.4-beta] - 2026-08-07
 
 ### Fixed
