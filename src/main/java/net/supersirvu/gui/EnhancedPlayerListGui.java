@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class EnhancedPlayerListGui extends JPanel {
+public class EnhancedPlayerListGui extends JPanel implements ThemeManager.ThemeListener {
     private static final String[] SKINS = new String[]{
             "textures/entity/player/slim/alex.png",
             "textures/entity/player/slim/ari.png",
@@ -63,15 +63,17 @@ public class EnhancedPlayerListGui extends JPanel {
     private int tick;
     private SortMode sortMode = SortMode.NAME;
     private String searchFilter = "";
+    private PlayerCellRenderer playerCellRenderer;
 
     public EnhancedPlayerListGui(MinecraftServer server) {
         this.server = server;
+        ThemeManager.getInstance().addListener(this);
         this.listModel = new DefaultListModel<>();
         this.playerList = new JList<>(listModel);
         this.headCache = new ConcurrentHashMap<>();
 
         this.setLayout(new BorderLayout());
-        this.setBackground(new Color(240, 240, 240));
+        this.setBackground(ThemeManager.getInstance().getPanelBackground());
 
         // Setup player list
         setupPlayerList();
@@ -199,9 +201,11 @@ public class EnhancedPlayerListGui extends JPanel {
     }
 
     private void setupPlayerList() {
-        playerList.setCellRenderer(new PlayerCellRenderer());
+        playerCellRenderer = new PlayerCellRenderer();
+        playerList.setCellRenderer(playerCellRenderer);
         playerList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        playerList.setBackground(Color.WHITE);
+        playerList.setBackground(ThemeManager.getInstance().getInputBackground());
+        playerList.setForeground(ThemeManager.getInstance().getForeground());
         playerList.setFixedCellHeight(40);
 
         // Add right-click context menu
@@ -231,7 +235,7 @@ public class EnhancedPlayerListGui extends JPanel {
 
     private JPanel createHeaderPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(250, 250, 250));
+        panel.setBackground(ThemeManager.getInstance().getSurfaceBackground());
         panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         // Search field
@@ -270,7 +274,7 @@ public class EnhancedPlayerListGui extends JPanel {
         banListButton.addActionListener(e -> showBanList());
 
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        controlPanel.setBackground(new Color(250, 250, 250));
+        controlPanel.setBackground(ThemeManager.getInstance().getSurfaceBackground());
         controlPanel.add(sortButton);
         controlPanel.add(banListButton);
 
@@ -486,7 +490,7 @@ public class EnhancedPlayerListGui extends JPanel {
 
             infoLabel = new JLabel();
             infoLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-            infoLabel.setForeground(Color.GRAY);
+            infoLabel.setForeground(ThemeManager.getInstance().getMutedForeground());
 
             textPanel.add(nameLabel);
             textPanel.add(infoLabel);
@@ -514,9 +518,10 @@ public class EnhancedPlayerListGui extends JPanel {
                                                       int index, boolean isSelected, boolean cellHasFocus) {
             // Set background
             if (isSelected) {
-                setBackground(new Color(184, 207, 229));
+                setBackground(ThemeManager.getInstance().getSelectionBackground());
             } else {
-                setBackground(index % 2 == 0 ? Color.WHITE : new Color(250, 250, 250));
+                ThemeManager themeManager = ThemeManager.getInstance();
+                setBackground(index % 2 == 0 ? themeManager.getInputBackground() : themeManager.getSurfaceBackground());
             }
 
             // Set player head
@@ -562,6 +567,21 @@ public class EnhancedPlayerListGui extends JPanel {
 
             return this;
         }
+    }
+
+    @Override
+    public void themeChanged(ThemeManager themeManager) {
+        SwingUtilities.invokeLater(() -> {
+            setBackground(themeManager.getPanelBackground());
+            playerList.setBackground(themeManager.getInputBackground());
+            playerList.setForeground(themeManager.getForeground());
+            ThemeManager.setBackgroundRecursively(this, themeManager.getPanelBackground(), themeManager.getForeground());
+            playerList.setBackground(themeManager.getInputBackground());
+            playerCellRenderer = new PlayerCellRenderer();
+            playerList.setCellRenderer(playerCellRenderer);
+            playerList.repaint();
+            repaint();
+        });
     }
 
     // Sort modes

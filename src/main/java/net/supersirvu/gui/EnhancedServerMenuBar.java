@@ -26,6 +26,7 @@ import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -1083,6 +1084,12 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JMenu toolsMenu = new JMenu("Tools");
         toolsMenu.setMnemonic('T');
 
+        JMenuItem appearanceItem = new JMenuItem("Appearance...");
+        appearanceItem.addActionListener(e -> showAppearanceSettings());
+        toolsMenu.add(appearanceItem);
+
+        toolsMenu.addSeparator();
+
         JMenuItem commandPaletteItem = new JMenuItem("Command Palette...");
         commandPaletteItem.setAccelerator(KeyStroke.getKeyStroke("ctrl shift P"));
         commandPaletteItem.addActionListener(e -> showCommandPalette());
@@ -1113,6 +1120,87 @@ public class EnhancedServerMenuBar extends JMenuBar {
         toolsMenu.add(serverIconItem);
 
         return toolsMenu;
+    }
+
+    private void showAppearanceSettings() {
+        ThemeManager themeManager = ThemeManager.getInstance();
+        JDialog dialog = new JDialog(parentFrame, "Appearance", true);
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.setSize(520, 460);
+        dialog.setLocationRelativeTo(parentFrame);
+
+        JPanel content = new JPanel(new BorderLayout(10, 10));
+        content.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        JPanel themePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        themePanel.setBorder(BorderFactory.createTitledBorder("Theme"));
+        JRadioButton lightButton = new JRadioButton("Light", !themeManager.isDark());
+        JRadioButton darkButton = new JRadioButton("Dark", themeManager.isDark());
+        ButtonGroup themeGroup = new ButtonGroup();
+        themeGroup.add(lightButton);
+        themeGroup.add(darkButton);
+        themePanel.add(lightButton);
+        themePanel.add(darkButton);
+        content.add(themePanel, BorderLayout.NORTH);
+
+        JPanel palettePanel = new JPanel(new GridLayout(0, 2, 8, 8));
+        palettePanel.setBorder(BorderFactory.createTitledBorder("Log colors"));
+        Map<EnhancedLogPanel.LogLevel, JButton> colorButtons = new EnumMap<>(EnhancedLogPanel.LogLevel.class);
+        for (EnhancedLogPanel.LogLevel level : EnhancedLogPanel.LogLevel.values()) {
+            JLabel label = new JLabel(level.name());
+            JButton colorButton = new JButton("Choose color");
+            colorButton.setOpaque(true);
+            colorButton.setBorderPainted(true);
+            colorButton.setBackground(themeManager.getLogColor(level));
+            colorButton.setToolTipText("Current color: " + toHex(themeManager.getLogColor(level)));
+            colorButton.addActionListener(event -> {
+                Color selected = JColorChooser.showDialog(dialog, level + " log color",
+                        colorButton.getBackground());
+                if (selected != null) {
+                    colorButton.setBackground(selected);
+                    colorButton.setToolTipText("Current color: " + toHex(selected));
+                }
+            });
+            colorButtons.put(level, colorButton);
+            palettePanel.add(label);
+            palettePanel.add(colorButton);
+        }
+        content.add(palettePanel, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton resetButton = new JButton("Reset palette");
+        resetButton.addActionListener(event -> {
+            Map<EnhancedLogPanel.LogLevel, Color> defaultsMap = ThemeManager.defaultLogColors();
+            for (Map.Entry<EnhancedLogPanel.LogLevel, JButton> entry : colorButtons.entrySet()) {
+                Color color = defaultsMap.get(entry.getKey());
+                entry.getValue().setBackground(color);
+                entry.getValue().setToolTipText("Current color: " + toHex(color));
+            }
+        });
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(event -> dialog.dispose());
+        JButton applyButton = new JButton("Apply");
+        applyButton.addActionListener(event -> {
+            Map<EnhancedLogPanel.LogLevel, Color> colors = new EnumMap<>(EnhancedLogPanel.LogLevel.class);
+            for (Map.Entry<EnhancedLogPanel.LogLevel, JButton> entry : colorButtons.entrySet()) {
+                colors.put(entry.getKey(), entry.getValue().getBackground());
+            }
+            themeManager.applySettings(darkButton.isSelected() ? ThemeManager.Theme.DARK : ThemeManager.Theme.LIGHT, colors);
+            themeManager.applyTo(parentFrame);
+            dialog.dispose();
+        });
+        buttons.add(resetButton);
+        buttons.add(cancelButton);
+        buttons.add(applyButton);
+
+        dialog.add(content, BorderLayout.CENTER);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        themeManager.applyTo(dialog);
+        dialog.setVisible(true);
+    }
+
+    private String toHex(Color color) {
+        return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
     }
 
     private void showCommandPalette() {

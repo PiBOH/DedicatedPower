@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.2-1.1.0-beta] - 2026-08-07
+
+### Added
+- Added a persistent Light/Dark appearance switch under `Tools > Appearance...`
+- Added a configurable log color palette for INFO, WARN, ERROR, DEBUG, and CHAT messages using native Swing color pickers
+- Appearance settings are stored in `config/dedicatedpower-gui.properties` and restored on the next server start
+
+### Changed
+- Integrated the appearance controls from issue [#1](https://github.com/PiBOH/DedicatedPower/issues/1) and issue [#2](https://github.com/PiBOH/DedicatedPower/issues/2), with the theme applied to the log panel, player list, statistics panel, menus, and dialogs
+
 ## [26.2-1.0.9] - 2026-08-07
 
 ### Added

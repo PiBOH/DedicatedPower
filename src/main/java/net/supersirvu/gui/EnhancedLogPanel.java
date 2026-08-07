@@ -33,7 +33,7 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public class EnhancedLogPanel extends JPanel {
+public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListener {
     private final DedicatedServer server;
 
     // Components
@@ -74,14 +74,18 @@ public class EnhancedLogPanel extends JPanel {
     public EnhancedLogPanel(DedicatedServer server) {
         this.server = server;
 
+        ThemeManager themeManager = ThemeManager.getInstance();
+        themeManager.addListener(this);
+
         setLayout(new BorderLayout());
-        setBackground(new Color(240, 240, 240));
+        setBackground(themeManager.getPanelBackground());
 
         // Create log display FIRST (before initializing styles)
         logTextPane = new JTextPane();
         logTextPane.setEditable(false);
         logTextPane.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        logTextPane.setBackground(Color.WHITE);
+        logTextPane.setBackground(themeManager.getInputBackground());
+        logTextPane.setForeground(themeManager.getForeground());
         logDocument = logTextPane.getStyledDocument();
 
         // NOW initialize styles (after logTextPane is created)
@@ -93,6 +97,8 @@ public class EnhancedLogPanel extends JPanel {
         // Create command input
         commandInput = new JTextField();
         commandInput.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        commandInput.setBackground(themeManager.getInputBackground());
+        commandInput.setForeground(themeManager.getForeground());
         commandInput.addActionListener(e -> executeCommand());
         commandInput.addKeyListener(new CommandInputKeyListener());
 
@@ -138,16 +144,17 @@ public class EnhancedLogPanel extends JPanel {
 
     private void initializeStyles() {
         // Log level styles
-        logStyles.put(LogLevel.INFO, createStyle(new Color(52, 152, 219), false));
-        logStyles.put(LogLevel.WARN, createStyle(new Color(243, 156, 18), false));
-        logStyles.put(LogLevel.ERROR, createStyle(new Color(231, 76, 60), true));
-        logStyles.put(LogLevel.DEBUG, createStyle(new Color(149, 165, 166), false));
-        logStyles.put(LogLevel.CHAT, createStyle(new Color(46, 204, 113), false));
+        ThemeManager themeManager = ThemeManager.getInstance();
+        logStyles.put(LogLevel.INFO, createStyle(themeManager.getLogColor(LogLevel.INFO), false));
+        logStyles.put(LogLevel.WARN, createStyle(themeManager.getLogColor(LogLevel.WARN), false));
+        logStyles.put(LogLevel.ERROR, createStyle(themeManager.getLogColor(LogLevel.ERROR), true));
+        logStyles.put(LogLevel.DEBUG, createStyle(themeManager.getLogColor(LogLevel.DEBUG), false));
+        logStyles.put(LogLevel.CHAT, createStyle(themeManager.getLogColor(LogLevel.CHAT), false));
 
         // Command syntax styles
-        commandStyle = createStyle(new Color(52, 152, 219), true);
+        commandStyle = createStyle(themeManager.getLogColor(LogLevel.INFO), true);
         argumentStyle = createStyle(new Color(155, 89, 182), false);
-        errorStyle = createStyle(new Color(231, 76, 60), false);
+        errorStyle = createStyle(themeManager.getLogColor(LogLevel.ERROR), false);
     }
 
     private Style createStyle(Color color, boolean bold) {
@@ -160,7 +167,7 @@ public class EnhancedLogPanel extends JPanel {
     private void createControlPanel() {
         controlPanel = new JPanel(new GridBagLayout());
         controlPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        controlPanel.setBackground(new Color(250, 250, 250));
+        controlPanel.setBackground(ThemeManager.getInstance().getSurfaceBackground());
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -260,8 +267,9 @@ public class EnhancedLogPanel extends JPanel {
         suggestionModel = new DefaultListModel<>();
         suggestionList = new JList<>(suggestionModel);
         suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        suggestionList.setBackground(Color.WHITE);
-        suggestionList.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        suggestionList.setBackground(ThemeManager.getInstance().getInputBackground());
+        suggestionList.setForeground(ThemeManager.getInstance().getForeground());
+        suggestionList.setBorder(BorderFactory.createLineBorder(ThemeManager.getInstance().getBorderColor()));
         suggestionList.setFont(new Font("Monospaced", Font.PLAIN, 11));
 
         suggestionList.addMouseListener(new MouseAdapter() {
@@ -280,12 +288,12 @@ public class EnhancedLogPanel extends JPanel {
     }
 
     public void appendLog(String message, LogLevel level) {
-        // Store the log entry
         LogEntry entry = new LogEntry(message, level);
-        allLogEntries.add(entry);
 
-        // Display if it passes filters
+        // Keep storage and rendering on the EDT. This prevents a theme refresh
+        // from racing with a queued log update and displaying an entry twice.
         SwingUtilities.invokeLater(() -> {
+            allLogEntries.add(entry);
             if (shouldDisplayEntry(entry)) {
                 displayLogEntry(entry);
             }
@@ -396,13 +404,13 @@ public class EnhancedLogPanel extends JPanel {
         try {
             StyledDocument doc = (StyledDocument) commandInput.getDocument();
             Style defaultStyle = doc.addStyle("default", null);
-            StyleConstants.setForeground(defaultStyle, Color.BLACK);
+            StyleConstants.setForeground(defaultStyle, ThemeManager.getInstance().getForeground());
 
             if (!parse.getExceptions().isEmpty()) {
                 // Show error
-                commandInput.setForeground(Color.RED);
+                commandInput.setForeground(ThemeManager.getInstance().getLogColor(LogLevel.ERROR));
             } else {
-                commandInput.setForeground(Color.BLACK);
+                commandInput.setForeground(ThemeManager.getInstance().getForeground());
             }
         } catch (Exception e) {
             // Ignore styling errors
@@ -510,6 +518,27 @@ public class EnhancedLogPanel extends JPanel {
         }
     }
 
+    @Override
+    public void themeChanged(ThemeManager themeManager) {
+        SwingUtilities.invokeLater(() -> {
+            setBackground(themeManager.getPanelBackground());
+            controlPanel.setBackground(themeManager.getSurfaceBackground());
+            logTextPane.setBackground(themeManager.getInputBackground());
+            logTextPane.setForeground(themeManager.getForeground());
+            commandInput.setBackground(themeManager.getInputBackground());
+            commandInput.setForeground(themeManager.getForeground());
+
+            for (LogLevel level : LogLevel.values()) {
+                StyleConstants.setForeground(logStyles.get(level), themeManager.getLogColor(level));
+            }
+            StyleConstants.setForeground(commandStyle, themeManager.getLogColor(LogLevel.INFO));
+            StyleConstants.setForeground(errorStyle, themeManager.getLogColor(LogLevel.ERROR));
+            refreshLogs();
+            revalidate();
+            repaint();
+        });
+    }
+
     private void refreshLogs() {
         // Clear display
         try {
@@ -518,8 +547,8 @@ public class EnhancedLogPanel extends JPanel {
             e.printStackTrace();
         }
 
-        // Re-display all entries that match current filters
-        for (LogEntry entry : allLogEntries) {
+        // Re-display the stored entries. Storage and refresh both run on the EDT.
+        for (LogEntry entry : new ArrayList<>(allLogEntries)) {
             if (shouldDisplayEntry(entry)) {
                 displayLogEntry(entry);
             }

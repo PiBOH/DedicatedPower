@@ -19,7 +19,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 
-public class EnhancedPlayerStatsGui extends JComponent {
+public class EnhancedPlayerStatsGui extends JComponent implements ThemeManager.ThemeListener {
     private static final DecimalFormat AVG_TICK_FORMAT = createTickFormat();
     private static final DecimalFormat NUMBER_FORMAT = new DecimalFormat("#,###");
 
@@ -59,12 +59,13 @@ public class EnhancedPlayerStatsGui extends JComponent {
 
     public EnhancedPlayerStatsGui(MinecraftServer server) {
         this.server = server;
+        ThemeManager.getInstance().addListener(this);
         this.startTime = System.currentTimeMillis();
         this.setPreferredSize(new Dimension(456, 246));
         this.setMinimumSize(new Dimension(400, 200));
         this.timer = new Timer(500, event -> this.update());
         this.timer.start();
-        this.setBackground(BG_COLOR);
+        this.setBackground(ThemeManager.getInstance().getPanelBackground());
 
         // Add mouse motion listener for tooltips
         this.addMouseMotionListener(new MouseMotionAdapter() {
@@ -143,7 +144,8 @@ public class EnhancedPlayerStatsGui extends JComponent {
         int height = getHeight();
 
         // Background
-        g2d.setColor(BG_COLOR);
+        ThemeManager themeManager = ThemeManager.getInstance();
+        g2d.setColor(themeManager.getPanelBackground());
         g2d.fillRect(0, 0, width, height);
 
         // Calculate graph dimensions
@@ -177,11 +179,12 @@ public class EnhancedPlayerStatsGui extends JComponent {
         int graphX = 10;
 
         // Draw grid background
-        g2d.setColor(Color.WHITE);
+        ThemeManager themeManager = ThemeManager.getInstance();
+        g2d.setColor(themeManager.getGraphBackground());
         g2d.fillRect(graphX, y, graphWidth, height);
 
         // Draw grid lines
-        g2d.setColor(new Color(220, 220, 220));
+        g2d.setColor(themeManager.getGridColor());
         for (int i = 0; i <= 5; i++) {
             int gridY = y + (height * i / 5);
             g2d.drawLine(graphX, gridY, graphX + graphWidth, gridY);
@@ -192,13 +195,13 @@ public class EnhancedPlayerStatsGui extends JComponent {
         }
 
         // Draw title
-        g2d.setColor(Color.BLACK);
+        g2d.setColor(ThemeManager.getInstance().getForeground());
         g2d.setFont(new Font("Arial", Font.BOLD, 11));
         g2d.drawString(title, graphX + 5, y - 2);
 
         // Draw scale labels
         g2d.setFont(new Font("Arial", Font.PLAIN, 9));
-        g2d.setColor(Color.BLACK);
+        g2d.setColor(ThemeManager.getInstance().getForeground());
         g2d.drawString(String.valueOf((int)maxVal), graphX + graphWidth + 5, y + 10);
         g2d.drawString(String.valueOf((int)(maxVal / 2)), graphX + graphWidth + 5, y + height / 2 + 5);
         g2d.drawString(String.valueOf((int)minVal), graphX + graphWidth + 5, y + height);
@@ -218,7 +221,7 @@ public class EnhancedPlayerStatsGui extends JComponent {
         }
 
         // Draw border
-        g2d.setColor(new Color(100, 100, 100));
+        g2d.setColor(ThemeManager.getInstance().getBorderColor());
         g2d.drawRect(graphX, y, graphWidth, height);
     }
 
@@ -276,7 +279,9 @@ public class EnhancedPlayerStatsGui extends JComponent {
             tooltipX = mx - tooltipWidth - 10;
         }
 
-        g2d.setColor(new Color(255, 255, 255, 200));
+        g2d.setColor(ThemeManager.getInstance().isDark()
+                ? new Color(70, 70, 70, 220)
+                : new Color(255, 255, 255, 200));
         g2d.fillRoundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 5, 5);
         g2d.setColor(TEXT_COLOR);
         g2d.drawRoundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 5, 5);
@@ -305,6 +310,15 @@ public class EnhancedPlayerStatsGui extends JComponent {
         } else {
             return TPS_POOR;
         }
+    }
+
+    @Override
+    public void themeChanged(ThemeManager themeManager) {
+        SwingUtilities.invokeLater(() -> {
+            setBackground(themeManager.getPanelBackground());
+            revalidate();
+            repaint();
+        });
     }
 
     public void stop() {
