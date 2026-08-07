@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.2-1.0.5] - 2026-08-07
+
+### Added
+- Help menu now links back to the original project repository (GitHub and Modrinth page)
+
+### Changed
+- Closing the GUI window (X button) now asks whether to close only the GUI or also shut down the server
+- Report Bug now points back to the original repository issue tracker
+
 ## [26.2-1.0.4-beta] - 2026-08-07
 
 ### Fixed

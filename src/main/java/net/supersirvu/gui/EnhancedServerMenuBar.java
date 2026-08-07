@@ -1311,6 +1311,16 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JMenu helpMenu = new JMenu("Help");
         helpMenu.setMnemonic('H');
 
+        JMenuItem githubItem = new JMenuItem("GitHub Repository");
+        githubItem.addActionListener(e -> openURL("https://github.com/SuperSirvu/DedicatedPower"));
+        helpMenu.add(githubItem);
+
+        JMenuItem modrinthItem = new JMenuItem("Modrinth Page");
+        modrinthItem.addActionListener(e -> openURL("https://modrinth.com/mod/server-os"));
+        helpMenu.add(modrinthItem);
+
+        helpMenu.addSeparator();
+
         JMenuItem wikiItem = new JMenuItem("Minecraft Wiki");
         wikiItem.addActionListener(e -> openURL("https://minecraft.wiki"));
         helpMenu.add(wikiItem);
@@ -1422,7 +1432,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
 
     private void reportBug() {
         JOptionPane.showMessageDialog(parentFrame,
-                "To report a bug, please visit:\nhttps://github.com/PiBOH/DedicatedPower/issues",
+                "To report a bug, please visit:\nhttps://github.com/SuperSirvu/DedicatedPower/issues",
                 "Report Bug", JOptionPane.INFORMATION_MESSAGE);
     }
 
