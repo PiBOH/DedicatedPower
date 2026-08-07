@@ -19,6 +19,7 @@ import net.minecraft.world.level.storage.LevelData;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -42,7 +43,10 @@ public class EnhancedServerMenuBar extends JMenuBar {
         this.server = server;
         this.parentFrame = parentFrame;
 
-        SwingUtilities.invokeLater(this::createMenus);
+        // Build the menus synchronously: this class is only ever constructed on the
+        // EDT (from the GUI install), so populating the bar here guarantees all the
+        // menus are present before the frame is revalidated and repainted.
+        createMenus();
     }
 
     private void createMenus() {
@@ -1470,5 +1474,70 @@ public class EnhancedServerMenuBar extends JMenuBar {
         textArea.setFont(new Font("Monospaced", Font.PLAIN, 11));
 
         JOptionPane.showMessageDialog(parentFrame, textArea, "System Information", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Replaces the vanilla close behaviour (which shuts down the server whenever
+     * the window X button is pressed) with a confirmation dialog that lets the
+     * user choose between closing only the GUI, shutting down the server as well,
+     * or cancelling.
+     *
+     * <p>The server shutdown runs on a dedicated thread so the Swing event dispatch
+     * thread (and therefore the whole GUI) stays responsive while worlds are saved;
+     * once the server has fully stopped, the JVM exits cleanly.</p>
+     */
+    public static void installCloseConfirmation(JFrame frame, DedicatedServer server) {
+        // Remove the vanilla window listeners, which halt the server unconditionally.
+        for (WindowListener listener : frame.getWindowListeners()) {
+            frame.removeWindowListener(listener);
+        }
+        frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                // If the server has already stopped, just close the window without asking.
+                if (!server.isRunning()) {
+                    frame.dispose();
+                    return;
+                }
+
+                String[] options = {
+                        "Close GUI Only",
+                        "Close GUI and Server",
+                        "Cancel"
+                };
+                int choice = JOptionPane.showOptionDialog(
+                        frame,
+                        "Do you want to close only the GUI (the server keeps running) or also shut down the server?",
+                        "Close Dedicated Server",
+                        JOptionPane.YES_NO_CANCEL_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        options,
+                        options[0]
+                );
+                if (choice == 0) {
+                    // Close only the GUI window; the server keeps running in the background.
+                    frame.dispose();
+                } else if (choice == 1) {
+                    // Gracefully stop the server on a background thread: the GUI stays
+                    // responsive (the log keeps updating) while worlds are saved, then
+                    // the JVM exits as soon as the server has fully stopped.
+                    frame.setTitle("Minecraft server - shutting down!");
+                    frame.setEnabled(false);
+                    Thread shutdown = new Thread(() -> {
+                        try {
+                            server.halt(true);
+                        } finally {
+                            System.exit(0);
+                        }
+                    }, "Dedicated server shutdown");
+                    shutdown.setDaemon(false);
+                    shutdown.start();
+                }
+                // Otherwise (Cancel or the dialog was dismissed) keep everything as it is.
+            }
+        });
     }
 }

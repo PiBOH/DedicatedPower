@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.2-1.0.6] - 2026-08-07
+
+### Fixed
+- Fixed the top menu bar not appearing: menus are now built synchronously and the frame is always revalidated/repainted after install
+- Fixed very slow shutdown with "Close GUI and Server": the server now stops on a background thread so the GUI stays responsive and the process exits reliably once worlds are saved
+
 ## [26.2-1.0.5] - 2026-08-07
 
 ### Added
