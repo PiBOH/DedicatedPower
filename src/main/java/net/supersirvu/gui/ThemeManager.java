@@ -7,6 +7,7 @@
 package net.supersirvu.gui;
 
 import javax.swing.AbstractButton;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
@@ -17,6 +18,7 @@ import javax.swing.JTextField;
 import javax.swing.JList;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.plaf.basic.BasicButtonUI;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -280,8 +282,18 @@ public final class ThemeManager {
         Color border = getBorderColor();
 
         if (component instanceof AbstractButton button) {
-            if (!Boolean.TRUE.equals(button.getClientProperty("dedicatedpower.palettePreview"))) {
+            boolean palettePreview = Boolean.TRUE.equals(button.getClientProperty("dedicatedpower.palettePreview"));
+            if (!palettePreview) {
                 button.setBackground(surface);
+                button.setOpaque(true);
+                if (button instanceof JButton normalButton) {
+                    // Some Windows/Swing Look & Feels ignore Button.background and
+                    // paint their own native button surface. Use a controlled UI for
+                    // ordinary buttons so light/dark mode is actually visible.
+                    normalButton.setContentAreaFilled(true);
+                    normalButton.setBorderPainted(true);
+                    normalButton.setUI(new ThemedButtonUI(border));
+                }
             }
             button.setForeground(foreground);
         } else if (component instanceof JSpinner spinner) {
@@ -306,6 +318,39 @@ public final class ThemeManager {
             for (Component child : container.getComponents()) {
                 applyComponentTheme(child);
             }
+        }
+    }
+
+    private static final class ThemedButtonUI extends BasicButtonUI {
+        private final Color borderColor;
+
+        private ThemedButtonUI(Color borderColor) {
+            this.borderColor = borderColor;
+        }
+
+        @Override
+        protected void paintButtonPressed(java.awt.Graphics graphics, javax.swing.AbstractButton button) {
+            // The themed paint method below already draws the pressed background.
+            // Prevent BasicButtonUI from painting its own native/select color over it.
+        }
+
+        @Override
+        public void paint(java.awt.Graphics graphics, JComponent component) {
+            JButton button = (JButton) component;
+            java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+            javax.swing.ButtonModel model = button.getModel();
+            Color fill = button.getBackground();
+            if (model.isPressed()) {
+                fill = fill.darker();
+            } else if (model.isRollover()) {
+                fill = fill.brighter();
+            }
+            g.setColor(fill);
+            g.fillRect(0, 0, button.getWidth(), button.getHeight());
+            g.setColor(borderColor);
+            g.drawRect(0, 0, button.getWidth() - 1, button.getHeight() - 1);
+            g.dispose();
+            super.paint(graphics, component);
         }
     }
 
