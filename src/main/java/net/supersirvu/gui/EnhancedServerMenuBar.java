@@ -1291,47 +1291,122 @@ public class EnhancedServerMenuBar extends JMenuBar {
     }
 
     private void showMotdEditor() {
+        ThemeManager themeManager = ThemeManager.getInstance();
         JDialog dialog = new JDialog(parentFrame, "MOTD Editor", true);
-        dialog.setLayout(new BorderLayout(8, 8));
-        dialog.setSize(720, 520);
+        dialog.setLayout(new BorderLayout(12, 12));
+        dialog.setSize(960, 650);
+        dialog.setMinimumSize(new Dimension(780, 540));
         dialog.setLocationRelativeTo(parentFrame);
 
         MotdHistoryStore.State history = MotdHistoryStore.load();
-        JTextArea editor = new JTextArea(server.getMotd(), 4, 40);
+        Color input = themeManager.getInputBackground();
+        Color muted = themeManager.getMutedForeground();
+
+        JPanel root = new JPanel(new BorderLayout(12, 12));
+        root.setBorder(BorderFactory.createEmptyBorder(14, 14, 12, 14));
+
+        JPanel heading = new JPanel(new BorderLayout(8, 2));
+        JLabel title = new JLabel("MOTD Editor");
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 19f));
+        JLabel subtitle = new JLabel("Create the message players see in the server list");
+        subtitle.setForeground(muted);
+        JPanel headingText = new JPanel();
+        headingText.setLayout(new BoxLayout(headingText, BoxLayout.Y_AXIS));
+        headingText.add(title);
+        headingText.add(subtitle);
+        heading.add(headingText, BorderLayout.WEST);
+        JLabel support = new JLabel("Minecraft legacy formatting supported");
+        support.setForeground(muted);
+        heading.add(support, BorderLayout.EAST);
+        root.add(heading, BorderLayout.NORTH);
+
+        JTextArea editor = new JTextArea(server.getMotd(), 5, 42);
         editor.setLineWrap(true);
         editor.setWrapStyleWord(true);
+        editor.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
+        editor.setMargin(new Insets(10, 10, 10, 10));
+        editor.setTabSize(2);
+        JScrollPane editorScroll = new JScrollPane(editor);
+        editorScroll.setBorder(BorderFactory.createLineBorder(themeManager.getBorderColor()));
+
+        JToolBar toolbar = new JToolBar();
+        toolbar.setFloatable(false);
+        toolbar.setBorder(BorderFactory.createEmptyBorder(3, 0, 5, 0));
+        addMotdCodeButton(toolbar, "Black", "0", editor);
+        addMotdCodeButton(toolbar, "Dark blue", "1", editor);
+        addMotdCodeButton(toolbar, "Dark green", "2", editor);
+        addMotdCodeButton(toolbar, "Red", "c", editor);
+        addMotdCodeButton(toolbar, "Gold", "6", editor);
+        addMotdCodeButton(toolbar, "Yellow", "e", editor);
+        addMotdCodeButton(toolbar, "White", "f", editor);
+        toolbar.addSeparator(new Dimension(8, 20));
+        addMotdCodeButton(toolbar, "Bold", "l", editor);
+        addMotdCodeButton(toolbar, "Italic", "o", editor);
+        addMotdCodeButton(toolbar, "Underline", "n", editor);
+        addMotdCodeButton(toolbar, "Strikethrough", "m", editor);
+        addMotdCodeButton(toolbar, "Reset", "r", editor);
+
+        JLabel counter = new JLabel();
+        counter.setForeground(muted);
+        JLabel status = new JLabel("Ready to apply");
+        status.setForeground(muted);
+        JPanel editorStatus = new JPanel(new BorderLayout());
+        editorStatus.setBorder(BorderFactory.createEmptyBorder(6, 2, 0, 2));
+        editorStatus.add(counter, BorderLayout.WEST);
+        editorStatus.add(status, BorderLayout.EAST);
+
+        JPanel editorPanel = new JPanel(new BorderLayout(4, 4));
+        editorPanel.setBorder(BorderFactory.createTitledBorder("Message"));
+        JScrollPane toolbarScroll = new JScrollPane(toolbar,
+                JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        toolbarScroll.setBorder(BorderFactory.createEmptyBorder());
+        editorPanel.add(toolbarScroll, BorderLayout.NORTH);
+        editorPanel.add(editorScroll, BorderLayout.CENTER);
+        editorPanel.add(editorStatus, BorderLayout.SOUTH);
+
         JTextPane preview = new JTextPane();
         preview.setContentType("text/html");
         preview.setEditable(false);
-        preview.setBorder(BorderFactory.createTitledBorder("Preview"));
+        preview.setFocusable(false);
+        preview.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        preview.setBackground(input);
+
+        JLabel previewTitle = new JLabel("DedicatedPower Server");
+        previewTitle.setFont(previewTitle.getFont().deriveFont(Font.BOLD, 14f));
+        JLabel previewState = new JLabel("Online  •  20 TPS");
+        previewState.setForeground(new Color(76, 175, 80));
+        JPanel previewHeader = new JPanel(new BorderLayout());
+        previewHeader.setBorder(BorderFactory.createEmptyBorder(10, 12, 4, 12));
+        previewHeader.add(previewTitle, BorderLayout.WEST);
+        previewHeader.add(previewState, BorderLayout.EAST);
+        JPanel previewCard = new JPanel(new BorderLayout());
+        previewCard.setBorder(BorderFactory.createLineBorder(themeManager.getBorderColor()));
+        previewCard.add(previewHeader, BorderLayout.NORTH);
+        previewCard.add(preview, BorderLayout.CENTER);
+
         JList<String> historyList = new JList<>(new DefaultListModel<>());
         refreshMotdHistoryModel(historyList, history);
         historyList.setVisible(history.isEnabled());
-
-        Runnable updatePreview = () -> preview.setText(motdToHtml(editor.getText()));
-        editor.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            private void changed() { updatePreview.run(); }
-            public void insertUpdate(javax.swing.event.DocumentEvent event) { changed(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent event) { changed(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+        historyList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        historyList.setCellRenderer((list, value, index, selected, focused) -> {
+            JLabel cell = new JLabel(motdToHtml(value));
+            cell.setOpaque(true);
+            cell.setBorder(BorderFactory.createEmptyBorder(7, 8, 7, 8));
+            cell.setBackground(selected ? themeManager.getSelectionBackground() : themeManager.getInputBackground());
+            cell.setForeground(themeManager.getForeground());
+            return cell;
         });
-        updatePreview.run();
+        historyList.setToolTipText("Select a saved MOTD to load it into the editor");
 
-        historyList.addListSelectionListener(event -> {
-            if (!event.getValueIsAdjusting() && historyList.getSelectedValue() != null) {
-                editor.setText(historyList.getSelectedValue());
-            }
-        });
-
-        JPanel historyPanel = new JPanel(new BorderLayout(4, 4));
-        historyPanel.setBorder(BorderFactory.createTitledBorder("MOTD history"));
+        JPanel historyPanel = new JPanel(new BorderLayout(6, 6));
+        historyPanel.setBorder(BorderFactory.createTitledBorder("Saved MOTDs"));
         historyPanel.add(new JScrollPane(historyList), BorderLayout.CENTER);
-        JPanel historyButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JCheckBox enabled = new JCheckBox("Enabled", history.isEnabled());
-        JButton deleteButton = new JButton("Delete selected");
-        JButton clearButton = new JButton("Clear history");
-        enabled.addActionListener(event -> {
-            history.setEnabled(enabled.isSelected());
+        JPanel historyButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JCheckBox historyEnabled = new JCheckBox("Remember history", history.isEnabled());
+        JButton deleteButton = new JButton("Delete");
+        JButton clearButton = new JButton("Clear");
+        historyEnabled.addActionListener(event -> {
+            history.setEnabled(historyEnabled.isSelected());
             historyList.setVisible(history.isEnabled());
             historyPanel.revalidate();
             historyPanel.repaint();
@@ -1344,26 +1419,78 @@ public class EnhancedServerMenuBar extends JMenuBar {
             }
         });
         clearButton.addActionListener(event -> {
-            history.getEntries().clear();
-            refreshMotdHistoryModel(historyList, history);
+            if (!history.getEntries().isEmpty()
+                    && JOptionPane.showConfirmDialog(dialog, "Clear all saved MOTDs?", "Clear history",
+                    JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                history.getEntries().clear();
+                refreshMotdHistoryModel(historyList, history);
+            }
         });
-        historyButtons.add(enabled);
+        historyButtons.add(historyEnabled);
         historyButtons.add(deleteButton);
         historyButtons.add(clearButton);
         historyPanel.add(historyButtons, BorderLayout.SOUTH);
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel leftColumn = new JPanel(new BorderLayout(8, 8));
+        leftColumn.add(editorPanel, BorderLayout.CENTER);
+        leftColumn.add(previewCard, BorderLayout.SOUTH);
+
+        JPanel rightColumn = new JPanel(new BorderLayout(8, 8));
+        rightColumn.add(historyPanel, BorderLayout.CENTER);
+        rightColumn.setPreferredSize(new Dimension(280, 0));
+
+        JPanel workspace = new JPanel(new GridLayout(1, 2, 12, 0));
+        workspace.add(leftColumn);
+        workspace.add(rightColumn);
+        root.add(workspace, BorderLayout.CENTER);
+
+        Runnable updateStatus = () -> {
+            int length = editor.getText().length();
+            counter.setText(length + " characters");
+            counter.setToolTipText(length > 59
+                    ? "Long MOTDs may be clipped in some Minecraft clients"
+                    : "Character count including formatting codes");
+            status.setText(length > 59 ? "Long MOTD" : "Ready to apply");
+        };
+        Runnable updatePreview = () -> preview.setText(motdToHtml(editor.getText()));
+        editor.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void changed() {
+                updatePreview.run();
+                updateStatus.run();
+            }
+            public void insertUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+        });
+        updatePreview.run();
+        updateStatus.run();
+
+        historyList.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting() && historyList.getSelectedValue() != null) {
+                editor.setText(historyList.getSelectedValue());
+                editor.requestFocusInWindow();
+            }
+        });
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JButton resetButton = new JButton("Reset");
+        resetButton.setToolTipText("Restore the MOTD currently used by the server");
+        resetButton.addActionListener(event -> editor.setText(server.getMotd()));
+        JButton copyButton = new JButton("Copy MOTD");
+        copyButton.addActionListener(event -> {
+            StringSelection selection = new StringSelection(editor.getText());
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+            status.setText("Copied to clipboard");
+        });
         JButton cancelButton = new JButton("Cancel");
-        JButton applyButton = new JButton("Apply");
         cancelButton.addActionListener(event -> dialog.dispose());
+        JButton applyButton = new JButton("Save & Apply");
         applyButton.addActionListener(event -> {
             String motd = editor.getText().trim();
             if (motd.isEmpty()) {
                 JOptionPane.showMessageDialog(dialog, "MOTD cannot be empty.", "Invalid MOTD", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            // DedicatedServer state is owned by the server thread. Queue the live
-            // update there while keeping file persistence on the EDT lightweight.
             server.execute(() -> server.setMotd(motd));
             if (history.isEnabled()) {
                 history.add(motd);
@@ -1374,20 +1501,32 @@ public class EnhancedServerMenuBar extends JMenuBar {
             }, "DedicatedPower MOTD persistence").start();
             dialog.dispose();
         });
+        buttons.add(resetButton);
+        buttons.add(copyButton);
         buttons.add(cancelButton);
         buttons.add(applyButton);
 
-        JPanel editorPanel = new JPanel(new BorderLayout(4, 4));
-        editorPanel.setBorder(BorderFactory.createTitledBorder("MOTD (supports Minecraft § color codes)"));
-        editorPanel.add(new JScrollPane(editor), BorderLayout.CENTER);
-        dialog.add(editorPanel, BorderLayout.NORTH);
-        dialog.add(preview, BorderLayout.CENTER);
-        historyPanel.setPreferredSize(new Dimension(250, 0));
-        dialog.add(historyPanel, BorderLayout.EAST);
+        dialog.add(root, BorderLayout.CENTER);
         dialog.add(buttons, BorderLayout.SOUTH);
         ThemeManager.getInstance().applyTo(dialog);
+        editor.setBackground(themeManager.getInputBackground());
+        editor.setForeground(themeManager.getForeground());
+        preview.setBackground(themeManager.getInputBackground());
+        historyList.setBackground(themeManager.getInputBackground());
+        historyList.setForeground(themeManager.getForeground());
         dialog.setVisible(true);
     }
+
+    private void addMotdCodeButton(JToolBar toolbar, String label, String code, JTextArea editor) {
+        JButton button = new JButton(label);
+        button.setToolTipText("Insert Minecraft formatting code §" + code);
+        button.addActionListener(event -> {
+            editor.insert("§" + code, editor.getCaretPosition());
+            editor.requestFocusInWindow();
+        });
+        toolbar.add(button);
+    }
+
 
     private void refreshMotdHistoryModel(JList<String> list, MotdHistoryStore.State history) {
         DefaultListModel<String> model = new DefaultListModel<>();
@@ -1425,7 +1564,9 @@ public class EnhancedServerMenuBar extends JMenuBar {
     private String motdToHtml(String motd) {
         String[] colors = {"000000", "0000AA", "00AA00", "00AAAA", "AA0000", "AA00AA", "FFAA00", "AAAAAA",
                 "555555", "5555FF", "55FF55", "55FFFF", "FF5555", "FF55FF", "FFFF55", "FFFFFF"};
-        StringBuilder html = new StringBuilder("<html><body style='font-family:sans-serif;padding:8px'>");
+        ThemeManager themeManager = ThemeManager.getInstance();
+        StringBuilder html = new StringBuilder("<html><body style='font-family:sans-serif;padding:8px;color:" + toHex(themeManager.getForeground())
+                + ";background-color:" + toHex(themeManager.getInputBackground()) + "'>");
         boolean colorOpen = false;
         boolean bold = false;
         boolean italic = false;

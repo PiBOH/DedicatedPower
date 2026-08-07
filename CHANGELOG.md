@@ -1,5 +1,16 @@
 # Changelog
 
+## [26.2-1.2.6-beta] - 2026-08-07
+
+### Added
+- Redesigned `Tools > MOTD Editor...` with a professional server-hosting-style workspace
+- Added one-click Minecraft formatting controls for common colors, bold, italic, underline, strikethrough, and reset codes
+- Added a live character counter, MOTD status indicator, copy action, reset action, and clearer `Save & Apply` workflow
+- Added a server-list-style preview card and richer saved-MOTD history presentation
+
+### Changed
+- Improved MOTD editor spacing, hierarchy, preview readability, and Light/Dark theme integration
+
 ## [26.2-1.2.5-beta] - 2026-08-07
 
 ### Fixed
