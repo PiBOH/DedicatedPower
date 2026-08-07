@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Integrated the appearance controls from issue [#1](https://github.com/PiBOH/DedicatedPower/issues/1) and issue [#2](https://github.com/PiBOH/DedicatedPower/issues/2), with the theme applied to the log panel, player list, statistics panel, menus, and dialogs
+- The appearance and GUI configuration work is documented alongside the related [PiBOH/jarock](https://github.com/PiBOH/jarock) project
 
 ## [26.2-1.0.9] - 2026-08-07
 
