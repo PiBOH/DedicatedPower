@@ -6,6 +6,7 @@
 
 package net.supersirvu.gui;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
@@ -1819,6 +1820,10 @@ public class EnhancedServerMenuBar extends JMenuBar {
     private void showSystemInformation() {
         Runtime runtime = Runtime.getRuntime();
 
+        String modVersion = FabricLoader.getInstance()
+                .getModContainer("dedicatedpower")
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("Unknown");
         String info = String.format("""
                         === SYSTEM INFORMATION ===
 
@@ -1832,6 +1837,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
                         Free Memory: %d MB
 
                         Minecraft Version: %s
+                        DedicatedPower Version: %s
                         """,
                 System.getProperty("java.version"),
                 System.getProperty("java.vendor"),
@@ -1842,7 +1848,8 @@ public class EnhancedServerMenuBar extends JMenuBar {
                 runtime.totalMemory() / 1024 / 1024,
                 runtime.maxMemory() / 1024 / 1024,
                 runtime.freeMemory() / 1024 / 1024,
-                server.getServerVersion()
+                server.getServerVersion(),
+                modVersion
         );
 
         JTextArea textArea = new JTextArea(info);
