@@ -111,6 +111,36 @@ jobs:
           echo "Prerelease: ${PRERELEASE}"
           echo "Tag: ${TAG}"
 
+      - name: Extract changelog section
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ steps.release.outputs.version }}"
+
+          # Grab the Keep a Changelog section for this version (## [<version>] ...)
+          if [[ ! -f CHANGELOG.md ]]; then
+            SECTION=""
+          else
+            SECTION="$(awk -v v="$VERSION" '
+              index($0, "## [" v "]") == 1 { found = 1; print; next }
+              found && /^## / { exit }
+              found { print }
+            ' CHANGELOG.md)"
+          fi
+
+          if [[ -z "$SECTION" ]]; then
+            SECTION="*No changelog entry found for version ${VERSION}.*"
+          fi
+
+          # EOF-delimited output so multiline content survives workflow outputs
+          {
+            echo "section<<CHANGELOG_EOF"
+            echo "$SECTION"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Check for an existing release tag
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
@@ -161,6 +191,10 @@ jobs:
 
             **Release channel:** `${{ steps.release.outputs.channel }}`
             **Minecraft target:** See the Minecraft version declared in the project metadata.
+
+            ${{ steps.changelog.outputs.section }}
+
+            ---
 
             This release was built automatically from commit `${{ github.sha }}`.
           files: ${{ steps.artifact.outputs.path }}
