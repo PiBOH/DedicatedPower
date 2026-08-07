@@ -9,8 +9,8 @@
 		"PiBOH"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://modrinth.com/mod/server-os",
+		"sources": "https://github.com/PiBOH/DedicatedPower"
 	},
     "accessWidener": "dedicatedpower.accesswidener",
 	"license": "MIT",
