@@ -369,7 +369,15 @@ public final class ThemeManager {
             popupMenu.setUI(new BasicPopupMenuUI());
         } else if (component instanceof AbstractButton button) {
             boolean palettePreview = Boolean.TRUE.equals(button.getClientProperty("dedicatedpower.palettePreview"));
-            if (!palettePreview) {
+            if (palettePreview) {
+                Object paletteColor = button.getClientProperty("dedicatedpower.paletteColor");
+                if (paletteColor instanceof Color color) {
+                    // updateComponentTreeUI may reset a button to the Look & Feel
+                    // default. Restore the user-selected log color explicitly.
+                    button.setBackground(color);
+                }
+                button.setOpaque(true);
+            } else {
                 button.setBackground(surface);
                 button.setOpaque(true);
                 if (button instanceof JButton normalButton) {

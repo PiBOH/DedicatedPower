@@ -1,5 +1,10 @@
 # Changelog
 
+## [26.2-1.2.3-beta] - 2026-08-07
+
+### Fixed
+- Preserved custom log palette colors when switching to Dark mode or when Swing refreshes the Appearance dialog controls
+
 ## [26.2-1.2.2-beta] - 2026-08-07
 
 ### Fixed

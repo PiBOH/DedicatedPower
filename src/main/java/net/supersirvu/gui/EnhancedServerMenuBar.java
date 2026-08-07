@@ -1240,12 +1240,14 @@ public class EnhancedServerMenuBar extends JMenuBar {
             colorButton.setOpaque(true);
             colorButton.setBorderPainted(true);
             colorButton.setBackground(themeManager.getLogColor(level));
+            colorButton.putClientProperty("dedicatedpower.paletteColor", themeManager.getLogColor(level));
             colorButton.setToolTipText("Current color: " + toHex(themeManager.getLogColor(level)));
             colorButton.addActionListener(event -> {
                 Color selected = JColorChooser.showDialog(dialog, level + " log color",
                         colorButton.getBackground());
                 if (selected != null) {
                     colorButton.setBackground(selected);
+                    colorButton.putClientProperty("dedicatedpower.paletteColor", selected);
                     colorButton.setToolTipText("Current color: " + toHex(selected));
                 }
             });
@@ -1262,6 +1264,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
             for (Map.Entry<EnhancedLogPanel.LogLevel, JButton> entry : colorButtons.entrySet()) {
                 Color color = defaultsMap.get(entry.getKey());
                 entry.getValue().setBackground(color);
+                entry.getValue().putClientProperty("dedicatedpower.paletteColor", color);
                 entry.getValue().setToolTipText("Current color: " + toHex(color));
             }
         });
