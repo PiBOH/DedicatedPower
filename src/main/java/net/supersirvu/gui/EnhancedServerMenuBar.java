@@ -22,7 +22,9 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -53,6 +55,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
     private void createMenus() {
         add(createServerMenu());
         add(createWorldMenu());
+        add(createNetworkMenu());
         add(createPerformanceMenu());
         add(createToolsMenu());
         add(createHelpMenu());
@@ -868,6 +871,85 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JOptionPane.showMessageDialog(parentFrame, panel, "World Information", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    // ==================== NETWORK MENU ====================
+    private JMenu createNetworkMenu() {
+        JMenu networkMenu = new JMenu("Network");
+        networkMenu.setMnemonic('N');
+
+        JMenuItem refreshItem = new JMenuItem("Refresh Network Information");
+        refreshItem.addActionListener(event -> showNetworkInformation());
+        networkMenu.add(refreshItem);
+
+        networkMenu.addSeparator();
+        JMenuItem infoItem = new JMenuItem("Show Network Information...");
+        infoItem.addActionListener(event -> showNetworkInformation());
+        networkMenu.add(infoItem);
+        return networkMenu;
+    }
+
+    private void showNetworkInformation() {
+        int javaPort = server.getServerPort();
+        JDialog dialog = new JDialog(parentFrame, "Network", true);
+        dialog.setLayout(new BorderLayout(8, 8));
+        dialog.setSize(520, 260);
+        dialog.setLocationRelativeTo(parentFrame);
+        JTextArea textArea = new JTextArea("Reading network configuration...");
+        textArea.setEditable(false);
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        dialog.add(new JScrollPane(textArea), BorderLayout.CENTER);
+        ThemeManager.getInstance().applyTo(dialog);
+
+        // Start the reader before showing the modal dialog; setVisible(true) blocks
+        // this EDT callback until the user closes the dialog.
+        new Thread(() -> {
+            Integer bedrockPort = readGeyserBedrockPort();
+            String bedrock = bedrockPort == null
+                    ? "Not detected (Geyser may be unavailable or configured elsewhere)"
+                    : Integer.toString(bedrockPort);
+            String info = "Network Information\n\n"
+                    + "Java Edition port: " + javaPort + "\n"
+                    + "Bedrock Edition port: " + bedrock + "\n\n"
+                    + "Java address: 0.0.0.0:" + javaPort + "\n"
+                    + "Bedrock address: 0.0.0.0:" + bedrock;
+            SwingUtilities.invokeLater(() -> textArea.setText(info));
+        }, "DedicatedPower network configuration reader").start();
+        dialog.setVisible(true);
+    }
+
+    private Integer readGeyserBedrockPort() {
+        Path[] candidates = {
+                Path.of("config", "Geyser-Fabric", "config.yml"),
+                Path.of("config", "Geyser-Fabric", "config.yaml"),
+                Path.of("config", "geyser-fabric", "config.yml")
+        };
+        for (Path candidate : candidates) {
+            if (!Files.isRegularFile(candidate)) {
+                continue;
+            }
+            try {
+                List<String> lines = Files.readAllLines(candidate);
+                boolean inBedrock = false;
+                for (String line : lines) {
+                    String trimmed = line.trim();
+                    if (trimmed.startsWith("bedrock:")) {
+                        inBedrock = true;
+                        continue;
+                    }
+                    if (inBedrock && !line.isBlank() && !Character.isWhitespace(line.charAt(0))) {
+                        inBedrock = false;
+                    }
+                    if (inBedrock && (trimmed.startsWith("port:") || trimmed.startsWith("port :"))) {
+                        String value = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+                        return Integer.parseInt(value);
+                    }
+                }
+            } catch (IOException | NumberFormatException ignored) {
+                // Continue with the next known Geyser config location.
+            }
+        }
+        return null;
+    }
+
     // ==================== PERFORMANCE MENU ====================
     private JMenu createPerformanceMenu() {
         JMenu perfMenu = new JMenu("Performance");
@@ -1088,6 +1170,10 @@ public class EnhancedServerMenuBar extends JMenuBar {
         appearanceItem.addActionListener(e -> showAppearanceSettings());
         toolsMenu.add(appearanceItem);
 
+        JMenuItem motdItem = new JMenuItem("MOTD Editor...");
+        motdItem.addActionListener(e -> showMotdEditor());
+        toolsMenu.add(motdItem);
+
         toolsMenu.addSeparator();
 
         JMenuItem commandPaletteItem = new JMenuItem("Command Palette...");
@@ -1198,6 +1284,206 @@ public class EnhancedServerMenuBar extends JMenuBar {
         dialog.add(buttons, BorderLayout.SOUTH);
         themeManager.applyTo(dialog);
         dialog.setVisible(true);
+    }
+
+    private void showMotdEditor() {
+        JDialog dialog = new JDialog(parentFrame, "MOTD Editor", true);
+        dialog.setLayout(new BorderLayout(8, 8));
+        dialog.setSize(720, 520);
+        dialog.setLocationRelativeTo(parentFrame);
+
+        MotdHistoryStore.State history = MotdHistoryStore.load();
+        JTextArea editor = new JTextArea(server.getMotd(), 4, 40);
+        editor.setLineWrap(true);
+        editor.setWrapStyleWord(true);
+        JTextPane preview = new JTextPane();
+        preview.setContentType("text/html");
+        preview.setEditable(false);
+        preview.setBorder(BorderFactory.createTitledBorder("Preview"));
+        JList<String> historyList = new JList<>(new DefaultListModel<>());
+        refreshMotdHistoryModel(historyList, history);
+        historyList.setVisible(history.isEnabled());
+
+        Runnable updatePreview = () -> preview.setText(motdToHtml(editor.getText()));
+        editor.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void changed() { updatePreview.run(); }
+            public void insertUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+        });
+        updatePreview.run();
+
+        historyList.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting() && historyList.getSelectedValue() != null) {
+                editor.setText(historyList.getSelectedValue());
+            }
+        });
+
+        JPanel historyPanel = new JPanel(new BorderLayout(4, 4));
+        historyPanel.setBorder(BorderFactory.createTitledBorder("MOTD history"));
+        historyPanel.add(new JScrollPane(historyList), BorderLayout.CENTER);
+        JPanel historyButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JCheckBox enabled = new JCheckBox("Enabled", history.isEnabled());
+        JButton deleteButton = new JButton("Delete selected");
+        JButton clearButton = new JButton("Clear history");
+        enabled.addActionListener(event -> {
+            history.setEnabled(enabled.isSelected());
+            historyList.setVisible(history.isEnabled());
+            historyPanel.revalidate();
+            historyPanel.repaint();
+        });
+        deleteButton.addActionListener(event -> {
+            String selected = historyList.getSelectedValue();
+            if (selected != null) {
+                history.getEntries().remove(selected);
+                refreshMotdHistoryModel(historyList, history);
+            }
+        });
+        clearButton.addActionListener(event -> {
+            history.getEntries().clear();
+            refreshMotdHistoryModel(historyList, history);
+        });
+        historyButtons.add(enabled);
+        historyButtons.add(deleteButton);
+        historyButtons.add(clearButton);
+        historyPanel.add(historyButtons, BorderLayout.SOUTH);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton cancelButton = new JButton("Cancel");
+        JButton applyButton = new JButton("Apply");
+        cancelButton.addActionListener(event -> dialog.dispose());
+        applyButton.addActionListener(event -> {
+            String motd = editor.getText().trim();
+            if (motd.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "MOTD cannot be empty.", "Invalid MOTD", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            // DedicatedServer state is owned by the server thread. Queue the live
+            // update there while keeping file persistence on the EDT lightweight.
+            server.execute(() -> server.setMotd(motd));
+            if (history.isEnabled()) {
+                history.add(motd);
+            }
+            new Thread(() -> {
+                updateServerPropertiesMotd(motd);
+                MotdHistoryStore.save(history);
+            }, "DedicatedPower MOTD persistence").start();
+            dialog.dispose();
+        });
+        buttons.add(cancelButton);
+        buttons.add(applyButton);
+
+        JPanel editorPanel = new JPanel(new BorderLayout(4, 4));
+        editorPanel.setBorder(BorderFactory.createTitledBorder("MOTD (supports Minecraft § color codes)"));
+        editorPanel.add(new JScrollPane(editor), BorderLayout.CENTER);
+        dialog.add(editorPanel, BorderLayout.NORTH);
+        dialog.add(preview, BorderLayout.CENTER);
+        historyPanel.setPreferredSize(new Dimension(250, 0));
+        dialog.add(historyPanel, BorderLayout.EAST);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        ThemeManager.getInstance().applyTo(dialog);
+        dialog.setVisible(true);
+    }
+
+    private void refreshMotdHistoryModel(JList<String> list, MotdHistoryStore.State history) {
+        DefaultListModel<String> model = new DefaultListModel<>();
+        for (String entry : history.getEntries()) {
+            model.addElement(entry);
+        }
+        list.setModel(model);
+    }
+
+    private void updateServerPropertiesMotd(String motd) {
+        Path path = Path.of("server.properties");
+        Properties properties = new Properties();
+        try (InputStream input = Files.newInputStream(path)) {
+            properties.load(input);
+        } catch (IOException error) {
+            if (Files.exists(path)) {
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentFrame,
+                        "MOTD applied in memory, but the existing server.properties could not be read: " + error.getMessage(),
+                        "MOTD Warning", JOptionPane.WARNING_MESSAGE));
+                return;
+            }
+            // A missing properties file can be created normally.
+        }
+        properties.setProperty("motd", motd);
+        try (OutputStream output = Files.newOutputStream(path,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            properties.store(output, "Minecraft server properties - Modified via DedicatedPower");
+        } catch (IOException error) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentFrame,
+                    "MOTD applied in memory, but server.properties could not be saved: " + error.getMessage(),
+                    "MOTD Warning", JOptionPane.WARNING_MESSAGE));
+        }
+    }
+
+    private String motdToHtml(String motd) {
+        String[] colors = {"000000", "0000AA", "00AA00", "00AAAA", "AA0000", "AA00AA", "FFAA00", "AAAAAA",
+                "555555", "5555FF", "55FF55", "55FFFF", "FF5555", "FF55FF", "FFFF55", "FFFFFF"};
+        StringBuilder html = new StringBuilder("<html><body style='font-family:sans-serif;padding:8px'>");
+        boolean colorOpen = false;
+        boolean bold = false;
+        boolean italic = false;
+        boolean underline = false;
+        boolean strike = false;
+        boolean obfuscated = false;
+
+        for (int index = 0; index < motd.length(); index++) {
+            char character = motd.charAt(index);
+            if (character == '§' && index + 1 < motd.length()) {
+                char code = Character.toLowerCase(motd.charAt(++index));
+                int colorIndex = "0123456789abcdef".indexOf(code);
+                if (colorIndex >= 0) {
+                    if (obfuscated) { html.append("</span>"); }
+                    closeMotdFormatting(html, bold, italic, underline, strike, colorOpen);
+                    html.append("<span style='color:#").append(colors[colorIndex]).append("'>");
+                    colorOpen = true;
+                    bold = italic = underline = strike = obfuscated = false;
+                } else if (code == 'l' || code == 'o' || code == 'n' || code == 'm') {
+                    if (code == 'l' && !bold) { html.append("<b>"); bold = true; }
+                    if (code == 'o' && !italic) { html.append("<i>"); italic = true; }
+                    if (code == 'n' && !underline) { html.append("<u>"); underline = true; }
+                    if (code == 'm' && !strike) { html.append("<s>"); strike = true; }
+                } else if (code == 'k') {
+                    // Minecraft randomizes glyphs; a browser preview cannot reproduce
+                    // that renderer, so indicate the obfuscated segment visually.
+                    if (!obfuscated) {
+                        html.append("<span style='letter-spacing:2px'>");
+                        obfuscated = true;
+                    }
+                } else if (code == 'r') {
+                    if (obfuscated) { html.append("</span>"); }
+                    closeMotdFormatting(html, bold, italic, underline, strike, colorOpen);
+                    colorOpen = false;
+                    bold = italic = underline = strike = obfuscated = false;
+                }
+                continue;
+            }
+            if (character == '\n') {
+                html.append("<br>");
+            } else if (character == '&') {
+                html.append("&amp;");
+            } else if (character == '<') {
+                html.append("&lt;");
+            } else if (character == '>') {
+                html.append("&gt;");
+            } else {
+                html.append(character);
+            }
+        }
+        if (obfuscated) { html.append("</span>"); }
+        closeMotdFormatting(html, bold, italic, underline, strike, colorOpen);
+        return html.append("</body></html>").toString();
+    }
+
+    private void closeMotdFormatting(StringBuilder html, boolean bold, boolean italic,
+                                     boolean underline, boolean strike, boolean colorOpen) {
+        if (strike) html.append("</s>");
+        if (underline) html.append("</u>");
+        if (italic) html.append("</i>");
+        if (bold) html.append("</b>");
+        if (colorOpen) html.append("</span>");
     }
 
     private String toHex(Color color) {
@@ -1488,6 +1774,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
                 /kill @e[type=item] - Clear dropped items
                 /save-all - Save all worlds
                 /reload - Reload datapacks
+                /opengui - Open the DedicatedPower GUI (also after --nogui)
                 """;
 
         JTextArea textArea = new JTextArea(commands);

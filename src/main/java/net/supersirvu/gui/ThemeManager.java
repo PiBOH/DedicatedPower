@@ -8,8 +8,15 @@ package net.supersirvu.gui;
 
 import javax.swing.AbstractButton;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.JRadioButtonMenuItem;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 import javax.swing.JScrollBar;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
@@ -19,10 +26,18 @@ import javax.swing.JList;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.plaf.basic.BasicCheckBoxMenuItemUI;
+import javax.swing.plaf.basic.BasicMenuItemUI;
+import javax.swing.plaf.basic.BasicMenuUI;
+import javax.swing.plaf.basic.BasicPopupMenuUI;
+import javax.swing.plaf.basic.BasicRadioButtonMenuItemUI;
+import java.awt.AWTEvent;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -57,6 +72,17 @@ public final class ThemeManager {
     private ThemeManager() {
         load();
         applySwingDefaults();
+        installWindowThemeListener();
+    }
+
+    private void installWindowThemeListener() {
+        Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
+            if (event instanceof WindowEvent windowEvent
+                    && windowEvent.getID() == WindowEvent.WINDOW_OPENED) {
+                Window window = windowEvent.getWindow();
+                SwingUtilities.invokeLater(() -> applyTo(window));
+            }
+        }, AWTEvent.WINDOW_EVENT_MASK);
     }
 
     public static ThemeManager getInstance() {
@@ -172,8 +198,22 @@ public final class ThemeManager {
         UIManager.put("MenuBar.foreground", foreground);
         UIManager.put("Menu.background", surface);
         UIManager.put("Menu.foreground", foreground);
+        UIManager.put("Menu.selectionBackground", getSelectionBackground());
+        UIManager.put("Menu.selectionForeground", foreground);
         UIManager.put("MenuItem.background", surface);
         UIManager.put("MenuItem.foreground", foreground);
+        UIManager.put("MenuItem.selectionBackground", getSelectionBackground());
+        UIManager.put("MenuItem.selectionForeground", foreground);
+        UIManager.put("RadioButtonMenuItem.background", surface);
+        UIManager.put("RadioButtonMenuItem.foreground", foreground);
+        UIManager.put("RadioButtonMenuItem.selectionBackground", getSelectionBackground());
+        UIManager.put("RadioButtonMenuItem.selectionForeground", foreground);
+        UIManager.put("CheckBoxMenuItem.background", surface);
+        UIManager.put("CheckBoxMenuItem.foreground", foreground);
+        UIManager.put("CheckBoxMenuItem.selectionBackground", getSelectionBackground());
+        UIManager.put("CheckBoxMenuItem.selectionForeground", foreground);
+        UIManager.put("PopupMenu.background", surface);
+        UIManager.put("PopupMenu.foreground", foreground);
         UIManager.put("Button.background", surface);
         UIManager.put("Button.foreground", foreground);
         UIManager.put("Button.select", isDark() ? new Color(75, 95, 120) : new Color(210, 225, 245));
@@ -281,17 +321,64 @@ public final class ThemeManager {
         Color foreground = getForeground();
         Color border = getBorderColor();
 
-        if (component instanceof AbstractButton button) {
+        if (component instanceof JMenuBar menuBar) {
+            menuBar.setOpaque(true);
+            menuBar.setBackground(surface);
+            menuBar.setForeground(foreground);
+        } else if (component instanceof JMenu menu) {
+            menu.setOpaque(true);
+            menu.setBackground(surface);
+            menu.setForeground(foreground);
+            menu.setUI(new BasicMenuUI());
+            if (menu.getClientProperty("dedicatedpower.themeMenuListener") == null) {
+                menu.putClientProperty("dedicatedpower.themeMenuListener", Boolean.TRUE);
+                menu.addMenuListener(new MenuListener() {
+                    @Override
+                    public void menuSelected(MenuEvent event) {
+                        applyComponentTheme(menu.getPopupMenu());
+                    }
+
+                    @Override
+                    public void menuDeselected(MenuEvent event) {
+                    }
+
+                    @Override
+                    public void menuCanceled(MenuEvent event) {
+                    }
+                });
+            }
+        } else if (component instanceof JRadioButtonMenuItem radioMenuItem) {
+            radioMenuItem.setOpaque(true);
+            radioMenuItem.setBackground(surface);
+            radioMenuItem.setForeground(foreground);
+            radioMenuItem.setUI(new BasicRadioButtonMenuItemUI());
+        } else if (component instanceof JCheckBoxMenuItem checkMenuItem) {
+            checkMenuItem.setOpaque(true);
+            checkMenuItem.setBackground(surface);
+            checkMenuItem.setForeground(foreground);
+            checkMenuItem.setUI(new BasicCheckBoxMenuItemUI());
+        } else if (component instanceof JMenuItem menuItem) {
+            menuItem.setOpaque(true);
+            menuItem.setBackground(surface);
+            menuItem.setForeground(foreground);
+            menuItem.setUI(new BasicMenuItemUI());
+        } else if (component instanceof JPopupMenu popupMenu) {
+            popupMenu.setOpaque(true);
+            popupMenu.setBackground(surface);
+            popupMenu.setForeground(foreground);
+            popupMenu.setUI(new BasicPopupMenuUI());
+        } else if (component instanceof AbstractButton button) {
             boolean palettePreview = Boolean.TRUE.equals(button.getClientProperty("dedicatedpower.palettePreview"));
             if (!palettePreview) {
                 button.setBackground(surface);
                 button.setOpaque(true);
                 if (button instanceof JButton normalButton) {
-                    // Some Windows/Swing Look & Feels ignore Button.background and
-                    // paint their own native button surface. Use a controlled UI for
-                    // ordinary buttons so light/dark mode is actually visible.
-                    normalButton.setContentAreaFilled(true);
-                    normalButton.setBorderPainted(true);
+                    // Disable native content painting and draw all button states in
+                    // ThemedButtonUI. This avoids Windows Look & Feel colors leaking
+                    // into either light or dark mode.
+                    normalButton.setContentAreaFilled(false);
+                    normalButton.setBorderPainted(false);
+                    normalButton.setOpaque(false);
                     normalButton.setUI(new ThemedButtonUI(border));
                 }
             }
@@ -349,7 +436,13 @@ public final class ThemeManager {
             g.fillRect(0, 0, button.getWidth(), button.getHeight());
             g.setColor(borderColor);
             g.drawRect(0, 0, button.getWidth() - 1, button.getHeight() - 1);
+            if (button.isFocusPainted() && button.hasFocus()) {
+                g.setColor(borderColor.brighter());
+                g.drawRect(2, 2, button.getWidth() - 5, button.getHeight() - 5);
+            }
             g.dispose();
+            // Content-area painting is disabled by applyComponentTheme, so the
+            // delegate paints text/icons without overwriting the themed background.
             super.paint(graphics, component);
         }
     }

@@ -379,6 +379,7 @@ public class EnhancedPlayerListGui extends JPanel implements ThemeManager.ThemeL
         menu.addSeparator();
         menu.add(opItem);
 
+        ThemeManager.getInstance().applyComponentTheme(menu);
         menu.show(playerList, x, y);
     }
 

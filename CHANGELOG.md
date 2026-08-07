@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [26.2-1.2.0-beta] - 2026-08-07
+
+### Added
+- Added `/opengui`, which explicitly opens the DedicatedPower GUI even when the server was started with `--nogui` (when a graphical environment is available)
+- Added a `Network` menu showing the Java server port and detecting the Bedrock port from common Geyser-Fabric configuration paths
+- Added `Tools > MOTD Editor...` with live preview, Minecraft legacy color-code support, persistent MOTD history, history enable/disable, selected-entry deletion, and clear-history controls
+
+### Fixed
+- Applied explicit Basic Swing menu and popup renderers, including menus opened after the initial GUI theme pass, so menu entries and submenus follow Light/Dark mode more reliably
+
 ## [26.2-1.1.2-beta] - 2026-08-07
 
 ### Fixed
