@@ -1,5 +1,10 @@
 # Changelog
 
+## [26.2-1.2.8-rc7] - 2026-08-08
+
+### Fixed
+- Fixed the log color palette buttons in `Tools > Appearance...` rendering as light Windows-style buttons in Dark mode: they now use the themed renderer and display the selected log color in both themes (issue [#3](https://github.com/PiBOH/DedicatedPower/issues/3))
+
 ## [26.2-1.2.8-rc6] - 2026-08-08
 
 ### Fixed

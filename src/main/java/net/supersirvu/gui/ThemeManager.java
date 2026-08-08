@@ -415,7 +415,14 @@ public final class ThemeManager {
                     // default. Restore the user-selected log color explicitly.
                     button.setBackground(color);
                 }
-                button.setOpaque(true);
+                // The native Windows button skin paints a light gradient with a
+                // blue border over the background, which left the palette buttons
+                // looking light in Dark mode. ThemedButtonUI renders the selected
+                // log color instead.
+                button.setContentAreaFilled(false);
+                button.setBorderPainted(false);
+                button.setOpaque(false);
+                button.setUI(new ThemedButtonUI(border));
             } else {
                 button.setBackground(surface);
                 button.setOpaque(true);
