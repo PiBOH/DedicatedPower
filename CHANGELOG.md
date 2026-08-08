@@ -1,5 +1,10 @@
 # Changelog
 
+## [26.2-1.2.7-rc3] - 2026-08-08
+
+### Changed
+- Checkbox and radio button glyphs now use custom theme-aware icons that stay readable in both Light and Dark mode instead of the native Look & Feel icons
+
 ## [26.2-1.2.7-rc2] - 2026-08-08
 
 ### Changed

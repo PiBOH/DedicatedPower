@@ -7,13 +7,17 @@
 package net.supersirvu.gui;
 
 import javax.swing.AbstractButton;
+import javax.swing.ButtonModel;
+import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.JRadioButton;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
@@ -32,9 +36,13 @@ import javax.swing.plaf.basic.BasicMenuUI;
 import javax.swing.plaf.basic.BasicPopupMenuUI;
 import javax.swing.plaf.basic.BasicRadioButtonMenuItemUI;
 import java.awt.AWTEvent;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.WindowEvent;
@@ -390,6 +398,13 @@ public final class ThemeManager {
                     normalButton.setUI(new ThemedButtonUI(border));
                 }
             }
+            // Replace the native checkbox/radio glyphs with theme-aware icons so
+            // the box and its mark stay readable in both light and dark mode.
+            if (button instanceof JCheckBox && !(button.getIcon() instanceof ThemedCheckboxIcon)) {
+                button.setIcon(new ThemedCheckboxIcon());
+            } else if (button instanceof JRadioButton && !(button.getIcon() instanceof ThemedRadioIcon)) {
+                button.setIcon(new ThemedRadioIcon());
+            }
             button.setForeground(foreground);
         } else if (component instanceof JSpinner spinner) {
             spinner.setBackground(input);
@@ -452,6 +467,126 @@ public final class ThemeManager {
             // Content-area painting is disabled by applyComponentTheme, so the
             // delegate paints text/icons without overwriting the themed background.
             super.paint(graphics, component);
+        }
+    }
+
+    /**
+     * Theme-aware checkbox glyph that replaces the native Look & Feel icon. The
+     * box, border, and check mark are painted with the active theme colors and
+     * react to the button's pressed, rollover, selected, and disabled states.
+     */
+    private static final class ThemedCheckboxIcon implements Icon {
+        private static final int SIZE = 16;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            AbstractButton button = (AbstractButton) component;
+            ButtonModel model = button.getModel();
+            ThemeManager theme = ThemeManager.getInstance();
+
+            Color fill = theme.getInputBackground();
+            Color border = theme.getBorderColor();
+            Color mark = theme.getForeground();
+
+            if (!model.isEnabled()) {
+                fill = theme.getPanelBackground();
+                border = theme.getMutedForeground();
+                mark = theme.getMutedForeground();
+            } else if (model.isPressed() && model.isArmed()) {
+                fill = theme.getSurfaceBackground();
+                border = border.darker();
+            } else if (model.isRollover()) {
+                border = border.brighter();
+            }
+
+            Graphics2D g = (Graphics2D) graphics.create();
+            try {
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (button.isFocusPainted() && button.hasFocus()) {
+                    g.setColor(theme.getSelectionBackground());
+                    g.fillRoundRect(x - 2, y - 2, SIZE + 3, SIZE + 3, 6, 6);
+                }
+                g.setColor(fill);
+                g.fillRoundRect(x, y, SIZE - 1, SIZE - 1, 4, 4);
+                g.setColor(border);
+                g.drawRoundRect(x, y, SIZE - 1, SIZE - 1, 4, 4);
+                if (model.isSelected()) {
+                    g.setColor(mark);
+                    g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g.drawPolyline(new int[]{x + 3, x + 7, x + 13}, new int[]{y + 8, y + 12, y + 4}, 3);
+                }
+            } finally {
+                g.dispose();
+            }
+        }
+    }
+
+    /**
+     * Theme-aware radio button glyph with the same state and theme handling as
+     * the checkbox icon above.
+     */
+    private static final class ThemedRadioIcon implements Icon {
+        private static final int SIZE = 16;
+
+        @Override
+        public int getIconWidth() {
+            return SIZE;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+
+        @Override
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            AbstractButton button = (AbstractButton) component;
+            ButtonModel model = button.getModel();
+            ThemeManager theme = ThemeManager.getInstance();
+
+            Color fill = theme.getInputBackground();
+            Color border = theme.getBorderColor();
+            Color dot = theme.getForeground();
+
+            if (!model.isEnabled()) {
+                fill = theme.getPanelBackground();
+                border = theme.getMutedForeground();
+                dot = theme.getMutedForeground();
+            } else if (model.isPressed() && model.isArmed()) {
+                fill = theme.getSurfaceBackground();
+                border = border.darker();
+            } else if (model.isRollover()) {
+                border = border.brighter();
+            }
+
+            Graphics2D g = (Graphics2D) graphics.create();
+            try {
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (button.isFocusPainted() && button.hasFocus()) {
+                    g.setColor(theme.getSelectionBackground());
+                    g.fillOval(x - 2, y - 2, SIZE + 3, SIZE + 3);
+                }
+                g.setColor(fill);
+                g.fillOval(x, y, SIZE - 1, SIZE - 1);
+                g.setColor(border);
+                g.drawOval(x, y, SIZE - 1, SIZE - 1);
+                if (model.isSelected()) {
+                    g.setColor(dot);
+                    g.fillOval(x + SIZE / 2 - 4, y + SIZE / 2 - 4, 8, 8);
+                }
+            } finally {
+                g.dispose();
+            }
         }
     }
 
