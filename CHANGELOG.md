@@ -1,6 +1,6 @@
 # Changelog
 
-## [26.2-1.2.7-beta] - 2026-08-08
+## [26.2-1.2.7-rc1] - 2026-08-08
 
 ### Fixed
 - Fixed the MOTD editor formatting controls being clipped at narrow window sizes: the button strip no longer wraps into cut-off rows and instead scrolls horizontally
