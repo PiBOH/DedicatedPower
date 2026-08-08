@@ -1,5 +1,10 @@
 # Changelog
 
+## [26.2-1.2.7-rc5] - 2026-08-08
+
+### Fixed
+- MOTD formatting buttons are never clipped anymore: the toolbar wraps onto additional rows (WrapLayout) instead of scrolling horizontally, so every button is always fully visible
+
 ## [26.2-1.2.7-rc4] - 2026-08-08
 
 ### Fixed

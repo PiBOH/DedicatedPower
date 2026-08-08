@@ -1355,12 +1355,10 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JScrollPane editorScroll = new JScrollPane(editor);
         editorScroll.setBorder(BorderFactory.createLineBorder(themeManager.getBorderColor()));
 
-        // Formatting controls: a non-wrapping horizontal strip. A plain
-        // BoxLayout panel (instead of JToolBar) guarantees the buttons never
-        // wrap into clipped rows; the JScrollPane scrolls the strip horizontally
-        // when it is wider than the editor column.
-        JPanel toolbar = new JPanel();
-        toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.X_AXIS));
+        // Formatting controls: a wrapping strip so every button is always fully
+        // visible with no horizontal scrollbar. WrapLayout reflows the buttons
+        // onto additional rows when the editor column is narrow.
+        JPanel toolbar = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 4));
         toolbar.setBorder(BorderFactory.createEmptyBorder(3, 4, 5, 4));
         addMotdCodeButton(toolbar, "Black", "0", editor);
         addMotdCodeButton(toolbar, "Dark blue", "1", editor);
@@ -1387,11 +1385,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
 
         JPanel editorPanel = new JPanel(new BorderLayout(4, 4));
         editorPanel.setBorder(BorderFactory.createTitledBorder("Message"));
-        JScrollPane toolbarScroll = new JScrollPane(toolbar,
-                JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        toolbarScroll.setBorder(BorderFactory.createEmptyBorder());
-        toolbarScroll.getHorizontalScrollBar().setUnitIncrement(12);
-        editorPanel.add(toolbarScroll, BorderLayout.NORTH);
+        editorPanel.add(toolbar, BorderLayout.NORTH);
         editorPanel.add(editorScroll, BorderLayout.CENTER);
         editorPanel.add(editorStatus, BorderLayout.SOUTH);
 
@@ -1566,10 +1560,6 @@ public class EnhancedServerMenuBar extends JMenuBar {
         status.setForeground(themeManager.getMutedForeground());
 
         toolbar.setBackground(themeManager.getSurfaceBackground());
-        toolbarScroll.setBackground(themeManager.getSurfaceBackground());
-        toolbarScroll.getViewport().setBackground(themeManager.getSurfaceBackground());
-        toolbarScroll.getHorizontalScrollBar().setBackground(themeManager.getSurfaceBackground());
-        toolbarScroll.getHorizontalScrollBar().setForeground(themeManager.getForeground());
 
         historyEnabled.setBackground(themeManager.getPanelBackground());
         historyEnabled.setForeground(themeManager.getForeground());
@@ -1586,7 +1576,6 @@ public class EnhancedServerMenuBar extends JMenuBar {
             editor.requestFocusInWindow();
         });
         container.add(button);
-        container.add(Box.createHorizontalStrut(4));
     }
 
     private static int countNewlines(String text) {
