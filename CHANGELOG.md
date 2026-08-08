@@ -1,5 +1,15 @@
 # Changelog
 
+## [26.2-1.2.8-rc6] - 2026-08-08
+
+### Fixed
+- Fixed the server menu bar staying light/white in Dark mode: the native Windows menu bar skin is replaced with the themed renderer (issue [#3](https://github.com/PiBOH/DedicatedPower/issues/3))
+- Submenu arrows, keyboard accelerator text, and disabled menu entries now use theme colors in Dark mode
+- Checkbox and radio menu items now use the same theme-aware icons as the rest of the GUI
+
+### Added
+- Added `Tools > Export Mod List...` to save the installed mods as a plain text file or as a Markdown table
+
 ## [26.2-1.2.7-rc5] - 2026-08-08
 
 ### Fixed

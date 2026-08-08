@@ -7,6 +7,7 @@
 package net.supersirvu.gui;
 
 import javax.swing.AbstractButton;
+import javax.swing.BorderFactory;
 import javax.swing.ButtonModel;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -31,6 +32,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.plaf.basic.BasicCheckBoxMenuItemUI;
+import javax.swing.plaf.basic.BasicMenuBarUI;
 import javax.swing.plaf.basic.BasicMenuItemUI;
 import javax.swing.plaf.basic.BasicMenuUI;
 import javax.swing.plaf.basic.BasicPopupMenuUI;
@@ -252,6 +254,22 @@ public final class ThemeManager {
         UIManager.put("OptionPane.background", panel);
         UIManager.put("OptionPane.messageForeground", foreground);
         UIManager.put("Separator.foreground", border);
+        Color muted = getMutedForeground();
+        // Menu-specific defaults: the Windows Look & Feel renders submenu arrows,
+        // accelerators, disabled entries, and check/radio glyphs with native dark
+        // colors that are unreadable on dark menus. Point them at theme colors.
+        UIManager.put("Menu.arrowColor", foreground);
+        UIManager.put("Menu.acceleratorForeground", foreground);
+        UIManager.put("MenuItem.acceleratorForeground", foreground);
+        UIManager.put("CheckBoxMenuItem.acceleratorForeground", foreground);
+        UIManager.put("RadioButtonMenuItem.acceleratorForeground", foreground);
+        UIManager.put("Menu.disabledForeground", muted);
+        UIManager.put("MenuItem.disabledForeground", muted);
+        UIManager.put("CheckBoxMenuItem.disabledForeground", muted);
+        UIManager.put("RadioButtonMenuItem.disabledForeground", muted);
+        UIManager.put("CheckBoxMenuItem.checkIcon", new ThemedCheckboxIcon());
+        UIManager.put("RadioButtonMenuItem.checkIcon", new ThemedRadioIcon());
+        UIManager.put("PopupMenu.border", BorderFactory.createLineBorder(border));
     }
 
     private void notifyListeners() {
@@ -342,6 +360,10 @@ public final class ThemeManager {
             menuBar.setOpaque(true);
             menuBar.setBackground(surface);
             menuBar.setForeground(foreground);
+            // The Windows Look & Feel paints the native (light) menu bar skin over
+            // any background color, which left the bar white in Dark mode. The
+            // Basic renderer shows the themed background instead.
+            menuBar.setUI(new BasicMenuBarUI());
         } else if (component instanceof JMenu menu) {
             menu.setOpaque(true);
             menu.setBackground(surface);

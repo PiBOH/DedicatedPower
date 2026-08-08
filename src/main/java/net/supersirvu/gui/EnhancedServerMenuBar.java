@@ -7,6 +7,7 @@
 package net.supersirvu.gui;
 
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
@@ -32,8 +33,10 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.Locale;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -1181,6 +1184,10 @@ public class EnhancedServerMenuBar extends JMenuBar {
         motdItem.addActionListener(e -> showMotdEditor());
         toolsMenu.add(motdItem);
 
+        JMenuItem exportModsItem = new JMenuItem("Export Mod List...");
+        exportModsItem.addActionListener(e -> exportModList());
+        toolsMenu.add(exportModsItem);
+
         toolsMenu.addSeparator();
 
         JMenuItem commandPaletteItem = new JMenuItem("Command Palette...");
@@ -1742,6 +1749,106 @@ public class EnhancedServerMenuBar extends JMenuBar {
 
     private String toHex(Color color) {
         return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
+    private void exportModList() {
+        List<ModContainer> mods = new ArrayList<>(FabricLoader.getInstance().getAllMods());
+        mods.sort(Comparator.comparing(mod -> mod.getMetadata().getName().toLowerCase(Locale.ROOT)));
+
+        JDialog dialog = new JDialog(parentFrame, "Export Mod List", true);
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.setSize(460, 230);
+        dialog.setLocationRelativeTo(parentFrame);
+
+        JPanel options = new JPanel(new GridLayout(0, 1, 8, 8));
+        options.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        options.add(new JLabel(mods.size() + " installed mods detected"));
+        JRadioButton textButton = new JRadioButton("Plain text (.txt)", true);
+        JRadioButton markdownButton = new JRadioButton("Markdown table (.md)");
+        ButtonGroup formatGroup = new ButtonGroup();
+        formatGroup.add(textButton);
+        formatGroup.add(markdownButton);
+        options.add(textButton);
+        options.add(markdownButton);
+        dialog.add(options, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(event -> dialog.dispose());
+        JButton exportButton = new JButton("Export...");
+        exportButton.addActionListener(event -> {
+            boolean markdown = markdownButton.isSelected();
+            dialog.dispose();
+            saveModList(markdown, mods);
+        });
+        buttons.add(cancelButton);
+        buttons.add(exportButton);
+        dialog.add(buttons, BorderLayout.SOUTH);
+
+        ThemeManager.getInstance().applyTo(dialog);
+        dialog.setVisible(true);
+    }
+
+    private void saveModList(boolean markdown, List<ModContainer> mods) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save Mod List");
+        chooser.setSelectedFile(new File(markdown ? "mod-list.md" : "mod-list.txt"));
+        if (chooser.showSaveDialog(parentFrame) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File target = chooser.getSelectedFile();
+        String content = markdown ? buildModListMarkdown(mods) : buildModListText(mods);
+        try (FileWriter writer = new FileWriter(target)) {
+            writer.write(content);
+            JOptionPane.showMessageDialog(parentFrame,
+                    "Mod list saved to:\n" + target.getAbsolutePath(),
+                    "Export Complete", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException error) {
+            JOptionPane.showMessageDialog(parentFrame,
+                    "Failed to save mod list: " + error.getMessage(),
+                    "Export Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private String buildModListText(List<ModContainer> mods) {
+        StringBuilder output = new StringBuilder();
+        output.append("Minecraft Mod List\n");
+        output.append("Generated: ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())).append('\n');
+        output.append("Total mods: ").append(mods.size()).append("\n\n");
+        for (ModContainer mod : mods) {
+            output.append("- ").append(mod.getMetadata().getName())
+                    .append(" (").append(mod.getMetadata().getId()).append(')')
+                    .append(" v").append(mod.getMetadata().getVersion().getFriendlyString()).append('\n');
+            String description = mod.getMetadata().getDescription();
+            if (description != null && !description.isBlank()) {
+                output.append("  ").append(description.replace('\n', ' ').trim()).append('\n');
+            }
+        }
+        return output.toString();
+    }
+
+    private String buildModListMarkdown(List<ModContainer> mods) {
+        StringBuilder output = new StringBuilder();
+        output.append("# Minecraft Mod List\n\n");
+        output.append("Generated: ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()))
+                .append(" — ").append(mods.size()).append(" mods\n\n");
+        output.append("| Name | ID | Version | Description |\n");
+        output.append("|---|---|---|---|\n");
+        for (ModContainer mod : mods) {
+            output.append("| ").append(escapeMarkdownCell(mod.getMetadata().getName()))
+                    .append(" | ").append(escapeMarkdownCell(mod.getMetadata().getId()))
+                    .append(" | ").append(escapeMarkdownCell(mod.getMetadata().getVersion().getFriendlyString()))
+                    .append(" | ").append(escapeMarkdownCell(mod.getMetadata().getDescription()))
+                    .append(" |\n");
+        }
+        return output.toString();
+    }
+
+    private String escapeMarkdownCell(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("|", "\\|").replace('\n', ' ').trim();
     }
 
     private void showCommandPalette() {
