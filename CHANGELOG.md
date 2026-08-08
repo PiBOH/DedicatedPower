@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.7-rc4] - 2026-08-08
+
+### Fixed
+- Fixed section titles (e.g. `Message`, `Saved MOTDs`, `Theme`, `Log colors`) rendering black in Dark mode: titled borders now use the theme foreground color
+- Themed scrollbar thumbs and tracks so they follow Light/Dark mode instead of the native light gray
+
 ## [26.2-1.2.7-rc3] - 2026-08-08
 
 ### Changed

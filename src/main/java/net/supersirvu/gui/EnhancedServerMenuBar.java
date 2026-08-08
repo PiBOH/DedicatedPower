@@ -1420,10 +1420,13 @@ public class EnhancedServerMenuBar extends JMenuBar {
         historyList.setVisible(history.isEnabled());
         historyList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         historyList.setCellRenderer((list, value, index, selected, focused) -> {
-            JLabel cell = new JLabel(motdToHtml(value));
+            // The HTML body background would otherwise cover the selection
+            // highlight, so the selected row is painted with the selection color.
+            Color cellBackground = selected ? themeManager.getSelectionBackground() : themeManager.getInputBackground();
+            JLabel cell = new JLabel(motdToHtml(value, cellBackground));
             cell.setOpaque(true);
             cell.setBorder(BorderFactory.createEmptyBorder(7, 8, 7, 8));
-            cell.setBackground(selected ? themeManager.getSelectionBackground() : themeManager.getInputBackground());
+            cell.setBackground(cellBackground);
             cell.setForeground(themeManager.getForeground());
             return cell;
         });
@@ -1674,11 +1677,16 @@ public class EnhancedServerMenuBar extends JMenuBar {
     }
 
     private String motdToHtml(String motd) {
+        ThemeManager themeManager = ThemeManager.getInstance();
+        return motdToHtml(motd, themeManager.getInputBackground());
+    }
+
+    private String motdToHtml(String motd, Color background) {
         String[] colors = {"000000", "0000AA", "00AA00", "00AAAA", "AA0000", "AA00AA", "FFAA00", "AAAAAA",
                 "555555", "5555FF", "55FF55", "55FFFF", "FF5555", "FF55FF", "FFFF55", "FFFFFF"};
         ThemeManager themeManager = ThemeManager.getInstance();
         StringBuilder html = new StringBuilder("<html><body style='font-family:sans-serif;padding:8px;color:" + toHex(themeManager.getForeground())
-                + ";background-color:" + toHex(themeManager.getInputBackground()) + "'>");
+                + ";background-color:" + toHex(background) + "'>");
         boolean colorOpen = false;
         boolean bold = false;
         boolean italic = false;

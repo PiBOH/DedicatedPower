@@ -240,6 +240,15 @@ public final class ThemeManager {
         UIManager.put("Table.selectionForeground", foreground);
         UIManager.put("ScrollBar.background", surface);
         UIManager.put("ScrollBar.foreground", foreground);
+        UIManager.put("ScrollBar.thumb", isDark() ? new Color(105, 105, 105) : new Color(165, 165, 165));
+        UIManager.put("ScrollBar.track", isDark() ? new Color(40, 40, 40) : new Color(222, 222, 222));
+        UIManager.put("ScrollBar.thumbShadow", border);
+        UIManager.put("ScrollBar.thumbHighlight", border);
+        // String-created TitledBorders fall back to this UIManager key for their
+        // title color; the Windows Look & Feel default is black, which is
+        // unreadable on dark panels. Pointing it at the theme foreground keeps
+        // section titles readable in both Light and Dark mode.
+        UIManager.put("TitledBorder.titleColor", foreground);
         UIManager.put("OptionPane.background", panel);
         UIManager.put("OptionPane.messageForeground", foreground);
         UIManager.put("Separator.foreground", border);
