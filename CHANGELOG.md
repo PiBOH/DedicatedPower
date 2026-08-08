@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.7-beta] - 2026-08-08
+
+### Fixed
+- Fixed the MOTD editor formatting controls being clipped at narrow window sizes: the button strip no longer wraps into cut-off rows and instead scrolls horizontally
+- Applied explicit Light/Dark styling to every MOTD editor control, including the formatting buttons, toolbar strip, editor caret and selection colors, secondary labels, scrollbars, and history checkbox
+
 ## [26.2-1.2.6-beta] - 2026-08-07
 
 ### Added

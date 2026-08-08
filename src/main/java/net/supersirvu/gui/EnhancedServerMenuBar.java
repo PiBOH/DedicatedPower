@@ -1329,9 +1329,13 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JScrollPane editorScroll = new JScrollPane(editor);
         editorScroll.setBorder(BorderFactory.createLineBorder(themeManager.getBorderColor()));
 
-        JToolBar toolbar = new JToolBar();
-        toolbar.setFloatable(false);
-        toolbar.setBorder(BorderFactory.createEmptyBorder(3, 0, 5, 0));
+        // Formatting controls: a non-wrapping horizontal strip. A plain
+        // BoxLayout panel (instead of JToolBar) guarantees the buttons never
+        // wrap into clipped rows; the JScrollPane scrolls the strip horizontally
+        // when it is wider than the editor column.
+        JPanel toolbar = new JPanel();
+        toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.X_AXIS));
+        toolbar.setBorder(BorderFactory.createEmptyBorder(3, 4, 5, 4));
         addMotdCodeButton(toolbar, "Black", "0", editor);
         addMotdCodeButton(toolbar, "Dark blue", "1", editor);
         addMotdCodeButton(toolbar, "Dark green", "2", editor);
@@ -1339,7 +1343,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
         addMotdCodeButton(toolbar, "Gold", "6", editor);
         addMotdCodeButton(toolbar, "Yellow", "e", editor);
         addMotdCodeButton(toolbar, "White", "f", editor);
-        toolbar.addSeparator(new Dimension(8, 20));
+        toolbar.add(Box.createHorizontalStrut(10));
         addMotdCodeButton(toolbar, "Bold", "l", editor);
         addMotdCodeButton(toolbar, "Italic", "o", editor);
         addMotdCodeButton(toolbar, "Underline", "n", editor);
@@ -1360,6 +1364,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JScrollPane toolbarScroll = new JScrollPane(toolbar,
                 JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         toolbarScroll.setBorder(BorderFactory.createEmptyBorder());
+        toolbarScroll.getHorizontalScrollBar().setUnitIncrement(12);
         editorPanel.add(toolbarScroll, BorderLayout.NORTH);
         editorPanel.add(editorScroll, BorderLayout.CENTER);
         editorPanel.add(editorStatus, BorderLayout.SOUTH);
@@ -1400,7 +1405,8 @@ public class EnhancedServerMenuBar extends JMenuBar {
 
         JPanel historyPanel = new JPanel(new BorderLayout(6, 6));
         historyPanel.setBorder(BorderFactory.createTitledBorder("Saved MOTDs"));
-        historyPanel.add(new JScrollPane(historyList), BorderLayout.CENTER);
+        JScrollPane historyScroll = new JScrollPane(historyList);
+        historyPanel.add(historyScroll, BorderLayout.CENTER);
         JPanel historyButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         JCheckBox historyEnabled = new JCheckBox("Remember history", history.isEnabled());
         JButton deleteButton = new JButton("Delete");
@@ -1509,22 +1515,49 @@ public class EnhancedServerMenuBar extends JMenuBar {
         dialog.add(root, BorderLayout.CENTER);
         dialog.add(buttons, BorderLayout.SOUTH);
         ThemeManager.getInstance().applyTo(dialog);
+
+        // Explicit styling pass so every control follows the current theme
+        // regardless of Look & Feel defaults (caret, selection, secondary text,
+        // toolbar strip, scrollbars, and checkboxes included).
         editor.setBackground(themeManager.getInputBackground());
         editor.setForeground(themeManager.getForeground());
+        editor.setCaretColor(themeManager.getForeground());
+        editor.setSelectionColor(themeManager.getSelectionBackground());
+        editor.setSelectedTextColor(themeManager.getForeground());
+        editorScroll.getViewport().setBackground(themeManager.getInputBackground());
+
         preview.setBackground(themeManager.getInputBackground());
         historyList.setBackground(themeManager.getInputBackground());
         historyList.setForeground(themeManager.getForeground());
+        historyScroll.getViewport().setBackground(themeManager.getInputBackground());
+
+        subtitle.setForeground(themeManager.getMutedForeground());
+        support.setForeground(themeManager.getMutedForeground());
+        counter.setForeground(themeManager.getMutedForeground());
+        status.setForeground(themeManager.getMutedForeground());
+
+        toolbar.setBackground(themeManager.getSurfaceBackground());
+        toolbarScroll.setBackground(themeManager.getSurfaceBackground());
+        toolbarScroll.getViewport().setBackground(themeManager.getSurfaceBackground());
+        toolbarScroll.getHorizontalScrollBar().setBackground(themeManager.getSurfaceBackground());
+        toolbarScroll.getHorizontalScrollBar().setForeground(themeManager.getForeground());
+
+        historyEnabled.setBackground(themeManager.getPanelBackground());
+        historyEnabled.setForeground(themeManager.getForeground());
         dialog.setVisible(true);
     }
 
-    private void addMotdCodeButton(JToolBar toolbar, String label, String code, JTextArea editor) {
+    private void addMotdCodeButton(JComponent container, String label, String code, JTextArea editor) {
         JButton button = new JButton(label);
+        button.setFont(button.getFont().deriveFont(Font.PLAIN, 11f));
+        button.setMargin(new Insets(3, 8, 3, 8));
         button.setToolTipText("Insert Minecraft formatting code §" + code);
         button.addActionListener(event -> {
             editor.insert("§" + code, editor.getCaretPosition());
             editor.requestFocusInWindow();
         });
-        toolbar.add(button);
+        container.add(button);
+        container.add(Box.createHorizontalStrut(4));
     }
 
 
