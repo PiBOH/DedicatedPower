@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.7-rc2] - 2026-08-08
+
+### Changed
+- The MOTD editor now enforces Minecraft's two-line limit: extra lines are trimmed when typing, pasting, loading history entries, or resetting
+- The editor status bar now shows the current line count (`1/2` or `2/2`) next to the character counter
+
 ## [26.2-1.2.7-rc1] - 2026-08-08
 
 ### Fixed

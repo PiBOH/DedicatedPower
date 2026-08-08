@@ -18,6 +18,10 @@ import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.LevelData;
 
 import javax.swing.*;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
@@ -40,6 +44,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class EnhancedServerMenuBar extends JMenuBar {
+    private static final int MAX_MOTD_LINES = 2;
+
     private final DedicatedServer server;
     private final Frame parentFrame;
 
@@ -1308,7 +1314,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JPanel heading = new JPanel(new BorderLayout(8, 2));
         JLabel title = new JLabel("MOTD Editor");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 19f));
-        JLabel subtitle = new JLabel("Create the message players see in the server list");
+        JLabel subtitle = new JLabel("Create the message players see in the server list (up to 2 lines)");
         subtitle.setForeground(muted);
         JPanel headingText = new JPanel();
         headingText.setLayout(new BoxLayout(headingText, BoxLayout.Y_AXIS));
@@ -1326,6 +1332,26 @@ public class EnhancedServerMenuBar extends JMenuBar {
         editor.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
         editor.setMargin(new Insets(10, 10, 10, 10));
         editor.setTabSize(2);
+        // Minecraft shows at most 2 MOTD lines regardless of line length, so the
+        // document filter trims anything beyond that for typing, pasting, loading
+        // history entries, and resetting.
+        if (editor.getDocument() instanceof AbstractDocument abstractDocument) {
+            abstractDocument.setDocumentFilter(new DocumentFilter() {
+                @Override
+                public void insertString(FilterBypass bypass, int offset, String text, AttributeSet attrs)
+                        throws BadLocationException {
+                    applyMotdEdit(bypass, offset, 0, text, attrs);
+                }
+
+                @Override
+                public void replace(FilterBypass bypass, int offset, int length, String text, AttributeSet attrs)
+                        throws BadLocationException {
+                    applyMotdEdit(bypass, offset, length, text, attrs);
+                }
+            });
+        }
+        // Normalize a MOTD that already exceeded the limit (e.g. from server.properties).
+        editor.setText(limitMotdLines(editor.getText(), MAX_MOTD_LINES));
         JScrollPane editorScroll = new JScrollPane(editor);
         editorScroll.setBorder(BorderFactory.createLineBorder(themeManager.getBorderColor()));
 
@@ -1451,12 +1477,12 @@ public class EnhancedServerMenuBar extends JMenuBar {
         root.add(workspace, BorderLayout.CENTER);
 
         Runnable updateStatus = () -> {
-            int length = editor.getText().length();
-            counter.setText(length + " characters");
-            counter.setToolTipText(length > 59
-                    ? "Long MOTDs may be clipped in some Minecraft clients"
-                    : "Character count including formatting codes");
-            status.setText(length > 59 ? "Long MOTD" : "Ready to apply");
+            String text = editor.getText();
+            int length = text.length();
+            int lines = text.isEmpty() ? 0 : 1 + countNewlines(text);
+            counter.setText(lines + "/" + MAX_MOTD_LINES + " lines · " + length + " characters");
+            counter.setToolTipText("Minecraft shows up to " + MAX_MOTD_LINES + " lines in the server list");
+            status.setText(lines > MAX_MOTD_LINES ? "Too many lines" : "Ready to apply");
         };
         Runnable updatePreview = () -> preview.setText(motdToHtml(editor.getText()));
         editor.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -1558,6 +1584,59 @@ public class EnhancedServerMenuBar extends JMenuBar {
         });
         container.add(button);
         container.add(Box.createHorizontalStrut(4));
+    }
+
+    private static int countNewlines(String text) {
+        int count = 0;
+        for (int index = 0; index < text.length(); index++) {
+            if (text.charAt(index) == '\n') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Truncates a MOTD so it keeps at most {@code maxLines} lines; the length of
+     * each individual line is irrelevant to Minecraft's server list rendering.
+     */
+    private static String limitMotdLines(String text, int maxLines) {
+        if (maxLines <= 0) {
+            int firstNewline = text.indexOf('\n');
+            return firstNewline < 0 ? text : text.substring(0, firstNewline);
+        }
+        int newlineCount = 0;
+        for (int index = 0; index < text.length(); index++) {
+            if (text.charAt(index) == '\n' && ++newlineCount == maxLines) {
+                return text.substring(0, index);
+            }
+        }
+        return text;
+    }
+
+    /**
+     * Applies a document edit while keeping the total at two lines. The inserted
+     * text is trimmed so it can never add more lines than the remaining budget;
+     * an edit that would create a line beyond the limit (for example pressing
+     * Enter on the second line) is rejected entirely so the caret stays in place.
+     */
+    private void applyMotdEdit(DocumentFilter.FilterBypass bypass, int offset, int length,
+                               String text, AttributeSet attrs) throws BadLocationException {
+        int documentLength = bypass.getDocument().getLength();
+        String current = bypass.getDocument().getText(0, documentLength);
+        String prefix = current.substring(0, Math.min(offset, documentLength));
+        String suffix = current.substring(Math.min(offset + length, documentLength));
+        int existingNewlines = countNewlines(prefix) + countNewlines(suffix);
+        String limitedText = limitMotdLines(text, MAX_MOTD_LINES - existingNewlines);
+        if (limitedText.isEmpty() && !text.isEmpty()) {
+            // Reject edits that would exceed the line limit (e.g. Enter on line 2).
+            return;
+        }
+        if (limitedText.length() == text.length()) {
+            bypass.replace(offset, length, text, attrs);
+        } else {
+            bypass.replace(offset, length, limitedText, attrs);
+        }
     }
 
 
