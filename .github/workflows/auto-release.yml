@@ -3,7 +3,7 @@ name: Auto Release
 on:
   push:
     branches:
-      - mc-26.2
+      - main
   workflow_dispatch:
     inputs:
       version:
