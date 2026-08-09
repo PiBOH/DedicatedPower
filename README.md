@@ -32,7 +32,7 @@ It replaces the default server administration window with a cleaner interface fo
 - **Environment:** Dedicated servers only
 - **Fabric Loader:** 0.19.3 or newer
 - **Java:** 25 or newer
-- **License:** MIT
+- **License:** [MIT](LICENSE)
 
 DedicatedPower is not intended for single-player worlds or the integrated server.
 
@@ -142,8 +142,9 @@ Use the repository's [English bug report form](https://github.com/PiBOH/Dedicate
 
 ## Authors
 
-- SuperSirvu
-- PiBOH
+- @SuperSirvu
+- @PiBOH
+- @SuperPro5454
 
 ## License
 
