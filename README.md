@@ -142,9 +142,9 @@ Use the repository's [English bug report form](https://github.com/PiBOH/Dedicate
 
 ## Authors
 
-- @SuperSirvu
-- @PiBOH
-- @SuperPro5454
+- [@SuperSirvu](https://github.com/SuperSirvu)
+- [@PiBOH](https://github.com/PiBOH)
+- [@SuperPro5454](https://github.com/SuperPro5454)
 
 ## License
 
