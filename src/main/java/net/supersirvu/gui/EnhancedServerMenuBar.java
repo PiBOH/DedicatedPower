@@ -1333,7 +1333,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
         heading.add(support, BorderLayout.EAST);
         root.add(heading, BorderLayout.NORTH);
 
-        JTextArea editor = new JTextArea(server.getMotd(), 5, 42);
+        JTextArea editor = new JTextArea(normalizeMotdInput(server.getMotd()), 5, 42);
         editor.setLineWrap(true);
         editor.setWrapStyleWord(true);
         editor.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
@@ -1503,7 +1503,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
 
         historyList.addListSelectionListener(event -> {
             if (!event.getValueIsAdjusting() && historyList.getSelectedValue() != null) {
-                editor.setText(historyList.getSelectedValue());
+                editor.setText(normalizeMotdInput(historyList.getSelectedValue()));
                 editor.requestFocusInWindow();
             }
         });
@@ -1511,10 +1511,10 @@ public class EnhancedServerMenuBar extends JMenuBar {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         JButton resetButton = new JButton("Reset");
         resetButton.setToolTipText("Restore the MOTD currently used by the server");
-        resetButton.addActionListener(event -> editor.setText(server.getMotd()));
+        resetButton.addActionListener(event -> editor.setText(normalizeMotdInput(server.getMotd())));
         JButton copyButton = new JButton("Copy MOTD");
         copyButton.addActionListener(event -> {
-            StringSelection selection = new StringSelection(editor.getText());
+            StringSelection selection = new StringSelection(normalizeMotdInput(editor.getText()));
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
             status.setText("Copied to clipboard");
         });
@@ -1522,7 +1522,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
         cancelButton.addActionListener(event -> dialog.dispose());
         JButton applyButton = new JButton("Save & Apply");
         applyButton.addActionListener(event -> {
-            String motd = editor.getText().trim();
+            String motd = normalizeMotdInput(editor.getText()).trim();
             if (motd.isEmpty()) {
                 JOptionPane.showMessageDialog(dialog, "MOTD cannot be empty.", "Invalid MOTD", JOptionPane.ERROR_MESSAGE);
                 return;
@@ -1585,6 +1585,52 @@ public class EnhancedServerMenuBar extends JMenuBar {
         container.add(button);
     }
 
+    /**
+     * Converts the common escaped MOTD notation into the canonical Minecraft
+     * representation. This accepts both the Java/properties form (\\u00A7 and
+     * \\n) and the slash-prefixed form often copied from launcher or web examples
+     * (/u00A7 and /n), while preserving already decoded § formatting codes.
+     */
+    private static String normalizeMotdInput(String text) {
+        return normalizeMotdInput(text, true);
+    }
+
+    private static String normalizeMotdInput(String text, boolean allowSlashNewlineAtStart) {
+        if (text == null || text.isEmpty()) {
+            return text == null ? "" : text;
+        }
+
+        StringBuilder normalized = new StringBuilder(text.length());
+        for (int index = 0; index < text.length(); index++) {
+            char character = text.charAt(index);
+            if ((character == 92 || character == '/') && index + 1 < text.length()) {
+                if (text.regionMatches(true, index + 1, "u00a7", 0, 5)) {
+                    normalized.append((char) 0xA7);
+                    index += 5;
+                    continue;
+                }
+                boolean slashNewline = character == '/'
+                        && ((index == 0 && allowSlashNewlineAtStart)
+                        || (normalized.length() >= 2
+                        && normalized.charAt(normalized.length() - 2) == (char) 0xA7));
+                if (text.charAt(index + 1) == 'n' && (character == 92 || slashNewline)) {
+                    normalized.append((char) 10);
+                    index++;
+                    continue;
+                }
+            }
+            if (character == 13) {
+                if (index + 1 < text.length() && text.charAt(index + 1) == 10) {
+                    index++;
+                }
+                normalized.append((char) 10);
+            } else {
+                normalized.append(character);
+            }
+        }
+        return normalized.toString();
+    }
+
     private static int countNewlines(String text) {
         int count = 0;
         for (int index = 0; index < text.length(); index++) {
@@ -1625,17 +1671,16 @@ public class EnhancedServerMenuBar extends JMenuBar {
         String current = bypass.getDocument().getText(0, documentLength);
         String prefix = current.substring(0, Math.min(offset, documentLength));
         String suffix = current.substring(Math.min(offset + length, documentLength));
+        String normalizedPrefix = normalizeMotdInput(prefix);
+        boolean allowSlashNewlineAtStart = normalizedPrefix.isEmpty() || normalizedPrefix.endsWith("§r");
+        String normalizedText = normalizeMotdInput(text, allowSlashNewlineAtStart);
         int existingNewlines = countNewlines(prefix) + countNewlines(suffix);
-        String limitedText = limitMotdLines(text, MAX_MOTD_LINES - existingNewlines);
-        if (limitedText.isEmpty() && !text.isEmpty()) {
+        String limitedText = limitMotdLines(normalizedText, MAX_MOTD_LINES - existingNewlines);
+        if (limitedText.isEmpty() && !normalizedText.isEmpty()) {
             // Reject edits that would exceed the line limit (e.g. Enter on line 2).
             return;
         }
-        if (limitedText.length() == text.length()) {
-            bypass.replace(offset, length, text, attrs);
-        } else {
-            bypass.replace(offset, length, limitedText, attrs);
-        }
+        bypass.replace(offset, length, limitedText, attrs);
     }
 
 
@@ -1690,6 +1735,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
         boolean strike = false;
         boolean obfuscated = false;
 
+        motd = normalizeMotdInput(motd);
         for (int index = 0; index < motd.length(); index++) {
             char character = motd.charAt(index);
             if (character == '§' && index + 1 < motd.length()) {
