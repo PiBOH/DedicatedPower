@@ -1,5 +1,15 @@
 # Changelog
 
+## [26.2-1.2.13] - 2026-08-11
+
+### Fixed
+- Improved the selected-log context menu by disabling actions when no text is selected and handling unsupported browsers or unavailable clipboards gracefully
+
+## [26.2-1.2.12] - 2026-08-11
+
+### Added
+- Added a log context menu with `Copy` and `Search in the web` actions for selected log text
+
 ## [26.2-1.2.11] - 2026-08-11
 
 ### Added

@@ -26,8 +26,12 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.datatransfer.StringSelection;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -93,6 +97,7 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
         logTextPane.setBackground(themeManager.getInputBackground());
         logTextPane.setForeground(themeManager.getForeground());
         logDocument = logTextPane.getStyledDocument();
+        installLogContextMenu();
 
         // NOW initialize styles (after logTextPane is created)
         initializeStyles();
@@ -148,6 +153,92 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
 
         // Initialize suggestion window
         initializeSuggestionWindow();
+    }
+
+    private void installLogContextMenu() {
+        JPopupMenu contextMenu = new JPopupMenu();
+        JMenuItem copyItem = new JMenuItem("Copy");
+        JMenuItem searchItem = new JMenuItem("Search in the web");
+
+        copyItem.addActionListener(event -> copySelectedLogText());
+        searchItem.addActionListener(event -> searchSelectedLogText());
+        contextMenu.add(copyItem);
+        contextMenu.add(searchItem);
+        contextMenu.putClientProperty("dedicatedpower.copyItem", copyItem);
+        contextMenu.putClientProperty("dedicatedpower.searchItem", searchItem);
+
+        logTextPane.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent event) {
+                showLogContextMenu(event, contextMenu);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent event) {
+                showLogContextMenu(event, contextMenu);
+            }
+        });
+    }
+
+    private void showLogContextMenu(MouseEvent event, JPopupMenu contextMenu) {
+        if (!event.isPopupTrigger()) {
+            return;
+        }
+
+        String selectedText = logTextPane.getSelectedText();
+        boolean hasSelection = selectedText != null && !selectedText.isBlank();
+        ((JMenuItem) contextMenu.getClientProperty("dedicatedpower.copyItem")).setEnabled(hasSelection);
+        ((JMenuItem) contextMenu.getClientProperty("dedicatedpower.searchItem")).setEnabled(hasSelection);
+
+        ThemeManager.getInstance().applyComponentTheme(contextMenu);
+        contextMenu.show(logTextPane, event.getX(), event.getY());
+    }
+
+    private String getSelectedLogText() {
+        String selectedText = logTextPane.getSelectedText();
+        return selectedText == null ? "" : selectedText;
+    }
+
+    private void copySelectedLogText() {
+        String selectedText = getSelectedLogText();
+        if (selectedText.isEmpty()) {
+            return;
+        }
+        try {
+            Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new StringSelection(selectedText), null);
+        } catch (IllegalStateException error) {
+            JOptionPane.showMessageDialog(this,
+                    "The system clipboard is currently unavailable.",
+                    "Copy", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void searchSelectedLogText() {
+        String selectedText = getSelectedLogText().trim();
+        if (selectedText.isEmpty()) {
+            return;
+        }
+
+        if (!Desktop.isDesktopSupported()) {
+            JOptionPane.showMessageDialog(this,
+                    "Opening a web browser is not supported on this system.",
+                    "Search in the web", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            Desktop desktop = Desktop.getDesktop();
+            if (!desktop.isSupported(Desktop.Action.BROWSE)) {
+                throw new UnsupportedOperationException("Browser opening is not supported");
+            }
+            String query = URLEncoder.encode(selectedText, StandardCharsets.UTF_8);
+            desktop.browse(URI.create("https://www.google.com/search?q=" + query));
+        } catch (Exception error) {
+            JOptionPane.showMessageDialog(this,
+                    "Could not open the web browser: " + error.getMessage(),
+                    "Search in the web", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public void processLogMessage(String message) {
