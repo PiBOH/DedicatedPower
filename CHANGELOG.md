@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.10] - 2026-08-11
+
+### Fixed
+- Fixed MOTD color and formatting codes being displayed literally when pasted as `\\u00A7`, `/u00A7`, `\\n`, or `/n`
+- MOTD input is now normalized to Minecraft's canonical `§` formatting codes before preview, history, copy, runtime application, and `server.properties` persistence
+
 ## [26.2-1.2.9] - 2026-08-11
 
 ### Fixed
