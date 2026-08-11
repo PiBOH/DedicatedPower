@@ -1,5 +1,12 @@
 # Changelog
 
+## [26.2-1.2.16] - 2026-08-11
+
+### Fixed
+- Fixed command input characters being reordered intermittently (for example, `reload` becoming `eloadr` or `opengui` becoming `penguio`) by removing asynchronous autocomplete updates during ordinary typing
+- Command suggestions now run only when explicitly requested with `TAB` and stale suggestions are invalidated when the text or caret changes
+- Removed the invalid `StyledDocument` cast from command validation for the `JTextField` command input
+
 ## [26.2-1.2.15] - 2026-08-11
 
 ### Fixed
