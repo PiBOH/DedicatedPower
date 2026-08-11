@@ -1592,43 +1592,11 @@ public class EnhancedServerMenuBar extends JMenuBar {
      * (/u00A7 and /n), while preserving already decoded § formatting codes.
      */
     private static String normalizeMotdInput(String text) {
-        return normalizeMotdInput(text, true);
+        return MotdTextUtils.normalize(text);
     }
 
     private static String normalizeMotdInput(String text, boolean allowSlashNewlineAtStart) {
-        if (text == null || text.isEmpty()) {
-            return text == null ? "" : text;
-        }
-
-        StringBuilder normalized = new StringBuilder(text.length());
-        for (int index = 0; index < text.length(); index++) {
-            char character = text.charAt(index);
-            if ((character == 92 || character == '/') && index + 1 < text.length()) {
-                if (text.regionMatches(true, index + 1, "u00a7", 0, 5)) {
-                    normalized.append((char) 0xA7);
-                    index += 5;
-                    continue;
-                }
-                boolean slashNewline = character == '/'
-                        && ((index == 0 && allowSlashNewlineAtStart)
-                        || (normalized.length() >= 2
-                        && normalized.charAt(normalized.length() - 2) == (char) 0xA7));
-                if (text.charAt(index + 1) == 'n' && (character == 92 || slashNewline)) {
-                    normalized.append((char) 10);
-                    index++;
-                    continue;
-                }
-            }
-            if (character == 13) {
-                if (index + 1 < text.length() && text.charAt(index + 1) == 10) {
-                    index++;
-                }
-                normalized.append((char) 10);
-            } else {
-                normalized.append(character);
-            }
-        }
-        return normalized.toString();
+        return MotdTextUtils.normalize(text, allowSlashNewlineAtStart);
     }
 
     private static int countNewlines(String text) {
@@ -1646,17 +1614,7 @@ public class EnhancedServerMenuBar extends JMenuBar {
      * each individual line is irrelevant to Minecraft's server list rendering.
      */
     private static String limitMotdLines(String text, int maxLines) {
-        if (maxLines <= 0) {
-            int firstNewline = text.indexOf('\n');
-            return firstNewline < 0 ? text : text.substring(0, firstNewline);
-        }
-        int newlineCount = 0;
-        for (int index = 0; index < text.length(); index++) {
-            if (text.charAt(index) == '\n' && ++newlineCount == maxLines) {
-                return text.substring(0, index);
-            }
-        }
-        return text;
+        return MotdTextUtils.limitLines(text, maxLines);
     }
 
     /**
