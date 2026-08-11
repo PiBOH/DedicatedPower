@@ -23,14 +23,32 @@ public final class MotdTextUtils {
     }
 
     /**
-     * Repairs the UTF-8-as-Windows-1252 form of the section sign ("Â§") that
-     * can appear when a UTF-8 MOTD is decoded with the wrong legacy charset.
+     * Repairs known layers of UTF-8-as-Windows-1252 mojibake around the section
+     * sign. The replacement is repeated until stable, making it safe to call
+     * from every MOTD read/write path. It intentionally does not perform a
+     * general charset conversion, so normal accented text is preserved.
      */
     public static String repairEncoding(String text) {
         if (text == null || text.isEmpty()) {
             return text == null ? "" : text;
         }
-        return text.replace("Â§", "§");
+
+        String[] corruptedSectionSigns = {
+                "\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A7",
+                "\u00C3\u201A\u00C2\u00A7",
+                "\u00C2\u00A7"
+        };
+        String repaired = text;
+        boolean changed;
+        do {
+            changed = false;
+            for (String corrupted : corruptedSectionSigns) {
+                String next = repaired.replace(corrupted, "\u00A7");
+                changed |= !next.equals(repaired);
+                repaired = next;
+            }
+        } while (changed);
+        return repaired;
     }
 
     /**
