@@ -15,8 +15,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.dedicated.DedicatedServer;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
@@ -58,7 +58,6 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     private CompletableFuture<Suggestions> pendingSuggestions;
     private Suggestions currentSuggestions;
     private long suggestionGeneration;
-    private CommandDocumentListener documentListener;
 
     // Command history
     private final List<String> commandHistory = new ArrayList<>();
@@ -135,10 +134,7 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
         commandInput.setForeground(themeManager.getForeground());
         commandInput.addActionListener(e -> executeCommand());
         commandInput.addKeyListener(new CommandInputKeyListener());
-
-        // Create and store document listener reference
-        documentListener = new CommandDocumentListener();
-        commandInput.getDocument().addDocumentListener(documentListener);
+        commandInput.addCaretListener(new CommandCaretListener());
 
         // Disable TAB focus traversal so TAB can be used for completion
         commandInput.setFocusTraversalKeysEnabled(false);
@@ -470,6 +466,8 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
 
         // Clear input
         commandInput.setText("");
+        suggestionGeneration++;
+        currentSuggestions = null;
         hideSuggestions();
     }
 
@@ -492,7 +490,9 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
             StringReader reader = new StringReader(text);
             ParseResults<CommandSourceStack> parse = dispatcher.parse(reader, server.createCommandSourceStack());
 
-            // Ensure cursor position is within bounds
+            // Capture the caret together with the text. A completion range is
+            // valid only if neither the text nor the caret moved while Brigadier
+            // calculated the asynchronous result.
             int cursorPos = Math.min(commandInput.getCaretPosition(), text.length());
 
             pendingSuggestions = dispatcher.getCompletionSuggestions(parse, cursorPos);
@@ -500,7 +500,9 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                 SwingUtilities.invokeLater(() -> {
                     // Ignore completions calculated for an older text/caret state.
                     // They must never overwrite the user's current typing state.
-                    if (generation != suggestionGeneration || !text.equals(commandInput.getText())) {
+                    if (generation != suggestionGeneration
+                            || !text.equals(commandInput.getText())
+                            || cursorPos != commandInput.getCaretPosition()) {
                         return;
                     }
                     suggestionModel.clear();
@@ -524,7 +526,9 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                 // A failed request may also be stale; do not hide a popup created
                 // for newer input.
                 SwingUtilities.invokeLater(() -> {
-                    if (generation == suggestionGeneration && text.equals(commandInput.getText())) {
+                    if (generation == suggestionGeneration
+                            && text.equals(commandInput.getText())
+                            && commandInput.getCaretPosition() == cursorPos) {
                         hideSuggestions();
                     }
                 });
@@ -542,21 +546,12 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
         StringReader reader = new StringReader(command);
         ParseResults<CommandSourceStack> parse = dispatcher.parse(reader, server.createCommandSourceStack());
 
-        // Highlight syntax in command input
-        try {
-            StyledDocument doc = (StyledDocument) commandInput.getDocument();
-            Style defaultStyle = doc.addStyle("default", null);
-            StyleConstants.setForeground(defaultStyle, ThemeManager.getInstance().getForeground());
-
-            if (!parse.getExceptions().isEmpty()) {
-                // Show error
-                commandInput.setForeground(ThemeManager.getInstance().getLogColor(LogLevel.ERROR));
-            } else {
-                commandInput.setForeground(ThemeManager.getInstance().getForeground());
-            }
-        } catch (Exception e) {
-            // Ignore styling errors
-        }
+        // JTextField uses a PlainDocument, so only update its foreground here;
+        // attempting to cast its document to StyledDocument caused a swallowed
+        // ClassCastException on every validation.
+        commandInput.setForeground(parse.getExceptions().isEmpty()
+                ? ThemeManager.getInstance().getForeground()
+                : ThemeManager.getInstance().getLogColor(LogLevel.ERROR));
     }
 
     private void showSuggestions() {
@@ -593,19 +588,16 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
             String after = currentText.substring(end);
             String newText = before + suggestion.getText() + after;
 
-            // CRITICAL: Remove the document listener before modifying text
-            commandInput.getDocument().removeDocumentListener(documentListener);
-
-            // Set the new text
+            // Suggestions are requested explicitly (TAB/double-click), so there
+            // is no document listener to race with this intentional replacement.
             commandInput.setText(newText);
 
             // Position cursor at the end of the inserted suggestion
             int newCaretPos = start + suggestion.getText().length();
             commandInput.setCaretPosition(newCaretPos);
 
-            // Re-add the document listener after modification is complete
-            commandInput.getDocument().addDocumentListener(documentListener);
-
+            suggestionGeneration++;
+            currentSuggestions = null;
             hideSuggestions();
             commandInput.requestFocus();
         }
@@ -753,7 +745,20 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     private class CommandInputKeyListener extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
-            switch (e.getKeyCode()) {
+            int keyCode = e.getKeyCode();
+            if (keyCode != KeyEvent.VK_UP
+                    && keyCode != KeyEvent.VK_DOWN
+                    && keyCode != KeyEvent.VK_TAB
+                    && keyCode != KeyEvent.VK_ENTER
+                    && keyCode != KeyEvent.VK_ESCAPE) {
+                // Any normal edit invalidates pending completion ranges. Never
+                // let an async suggestion act on text that changed afterwards.
+                suggestionGeneration++;
+                currentSuggestions = null;
+                hideSuggestions();
+            }
+
+            switch (keyCode) {
                 case KeyEvent.VK_UP:
                     if (suggestionWindow.isVisible() && suggestionModel.size() > 0) {
                         // Navigate suggestions up
@@ -818,6 +823,9 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     }
 
     private void navigateHistory(int direction) {
+        suggestionGeneration++;
+        currentSuggestions = null;
+        hideSuggestions();
         if (commandHistory.isEmpty()) return;
 
         historyIndex = Math.max(0, Math.min(commandHistory.size(), historyIndex + direction));
@@ -829,26 +837,14 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
         }
     }
 
-    private class CommandDocumentListener implements DocumentListener {
+    private class CommandCaretListener implements CaretListener {
         @Override
-        public void insertUpdate(DocumentEvent e) {
-            deferSuggestionUpdate();
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-            deferSuggestionUpdate();
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-            deferSuggestionUpdate();
-        }
-
-        private void deferSuggestionUpdate() {
-            // Document notifications happen before JTextField advances its caret.
-            // Run after the mutation so autocomplete sees the final caret position.
-            SwingUtilities.invokeLater(EnhancedLogPanel.this::updateSuggestions);
+        public void caretUpdate(CaretEvent event) {
+            // Mouse clicks and programmatic history changes can move the caret
+            // without producing a key event. Invalidate completion ranges then.
+            suggestionGeneration++;
+            currentSuggestions = null;
+            hideSuggestions();
         }
     }
 
