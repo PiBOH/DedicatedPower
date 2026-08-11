@@ -23,11 +23,23 @@ public final class MotdTextUtils {
     }
 
     /**
+     * Repairs the UTF-8-as-Windows-1252 form of the section sign ("Â§") that
+     * can appear when a UTF-8 MOTD is decoded with the wrong legacy charset.
+     */
+    public static String repairEncoding(String text) {
+        if (text == null || text.isEmpty()) {
+            return text == null ? "" : text;
+        }
+        return text.replace("Â§", "§");
+    }
+
+    /**
      * Normalizes an inserted fragment. Slash-prefixed {@code /n} is only treated
      * as a newline at the beginning when explicitly allowed, or after {@code §r}.
      * This prevents URLs and ordinary text containing {@code /n} from changing.
      */
     static String normalize(String text, boolean allowSlashNewlineAtStart) {
+        text = repairEncoding(text);
         if (text == null || text.isEmpty()) {
             return text == null ? "" : text;
         }
