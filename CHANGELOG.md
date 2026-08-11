@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.17] - 2026-08-11
+
+### Fixed
+- Fixed recursively corrupted MOTD section signs such as `Ãƒâ€šÃ‚§` being displayed instead of `§`
+- Made mojibake repair iterative and idempotent across the MOTD preview, editor, history, copy, and server-properties save paths
+
 ## [26.2-1.2.16] - 2026-08-11
 
 ### Fixed

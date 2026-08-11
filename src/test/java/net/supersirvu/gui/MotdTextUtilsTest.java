@@ -12,6 +12,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MotdTextUtilsTest {
     @Test
+    void repairsRepeatedMojibakeSectionSigns() {
+        String repeated = "\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A73>>> "
+                + "\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A76\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A7lJa"
+                + "\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A79\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A7lrock"
+                + "\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A7r Minecraft 26.2 Server \u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A7r\n"
+                + "Visit \u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A73piboh.github.io/jarock"
+                + "\u00C3\u0192\u00E2\u20AC\u0161\u00C3\u201A\u00A7r for more informations.";
+        String expected = "§3>>> §6§lJa§9§lrock§r Minecraft 26.2 Server §r\n"
+                + "Visit §3piboh.github.io/jarock§r for more informations.";
+
+        assertEquals(expected, MotdTextUtils.repairEncoding(repeated));
+        assertEquals(expected, MotdTextUtils.repairEncoding(MotdTextUtils.repairEncoding(repeated)));
+        assertEquals(expected, MotdTextUtils.normalize(repeated));
+    }
+
+    @Test
     void repairsUtf8MojibakeSectionSigns() {
         String mojibake = "Â§3>>> Â§6Â§lJaÂ§9Â§lrockÂ§r Minecraft 26.2 Server Â§r\n"
                 + "Visit Â§3piboh.github.io/jarockÂ§r for more informations.";
