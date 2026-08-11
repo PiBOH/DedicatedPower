@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.9] - 2026-08-11
+
+### Fixed
+- Fixed online player names and details becoming invisible in Dark mode because the custom player-list cell renderer kept the default foreground color
+- Updated selected player rows and ping labels to use theme-aware foreground colors for consistent contrast
+
 ## [26.2-1.2.8] - 2026-08-08
 
 ### Added
