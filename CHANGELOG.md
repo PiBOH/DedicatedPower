@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.11] - 2026-08-11
+
+### Added
+- Added automated JUnit coverage for MOTD section-sign escapes, newline notation, URL safety, complete example MOTDs, line endings, and the two-line limit
+- Extracted MOTD normalization into the dependency-free `MotdTextUtils` helper for reliable testing and reuse
+
 ## [26.2-1.2.10] - 2026-08-11
 
 ### Fixed
