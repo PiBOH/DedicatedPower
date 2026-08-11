@@ -12,6 +12,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MotdTextUtilsTest {
     @Test
+    void repairsUtf8MojibakeSectionSigns() {
+        String mojibake = "Â§3>>> Â§6Â§lJaÂ§9Â§lrockÂ§r Minecraft 26.2 Server Â§r\n"
+                + "Visit Â§3piboh.github.io/jarockÂ§r for more informations.";
+        String expected = "§3>>> §6§lJa§9§lrock§r Minecraft 26.2 Server §r\n"
+                + "Visit §3piboh.github.io/jarock§r for more informations.";
+
+        assertEquals(expected, MotdTextUtils.repairEncoding(mojibake));
+        assertEquals(expected, MotdTextUtils.normalize(mojibake));
+    }
+
+    @Test
     void preservesLiteralSectionSignFormatting() {
         assertEquals("\u00A73>>> \u00A76\u00A7lJarock\u00A7r", 
                 MotdTextUtils.normalize("\u00A73>>> \u00A76\u00A7lJarock\u00A7r"));
@@ -63,6 +74,12 @@ class MotdTextUtilsTest {
     void doesNotDecodeSlashNewlineInAnInsertedMiddleFragmentUnlessAfterReset() {
         assertEquals("/nSuffix", MotdTextUtils.normalize("/nSuffix", false));
         assertEquals("§r\nSuffix", MotdTextUtils.normalize("§r/nSuffix", false));
+    }
+
+    @Test
+    void repairsEncodingWithoutChangingNormalText() {
+        assertEquals("plain text", MotdTextUtils.repairEncoding("plain text"));
+        assertEquals("§ is repaired", MotdTextUtils.repairEncoding("Â§ is repaired"));
     }
 
     @Test

@@ -37,7 +37,7 @@ public final class MotdHistoryStore {
             for (int index = 0; index < count; index++) {
                 String value = properties.getProperty("entry." + index);
                 if (value != null && !value.isBlank()) {
-                    state.entries.add(value);
+                    state.entries.add(MotdTextUtils.repairEncoding(value));
                 }
             }
         } catch (Exception ignored) {
@@ -82,6 +82,7 @@ public final class MotdHistoryStore {
         }
 
         public void add(String motd) {
+            motd = MotdTextUtils.repairEncoding(motd);
             entries.remove(motd);
             entries.add(0, motd);
             while (entries.size() > 50) {

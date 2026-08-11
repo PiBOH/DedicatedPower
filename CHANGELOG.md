@@ -1,5 +1,11 @@
 # Changelog
 
+## [26.2-1.2.15] - 2026-08-11
+
+### Fixed
+- Fixed MOTDs containing the UTF-8 mojibake sequence `Â§` being displayed or saved instead of the Minecraft section sign `§`
+- Repaired affected MOTD history entries automatically when they are loaded or added
+
 ## [26.2-1.2.14] - 2026-08-11
 
 ### Added
