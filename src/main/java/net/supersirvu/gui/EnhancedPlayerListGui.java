@@ -204,8 +204,11 @@ public class EnhancedPlayerListGui extends JPanel implements ThemeManager.ThemeL
         playerCellRenderer = new PlayerCellRenderer();
         playerList.setCellRenderer(playerCellRenderer);
         playerList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        playerList.setBackground(ThemeManager.getInstance().getInputBackground());
-        playerList.setForeground(ThemeManager.getInstance().getForeground());
+        ThemeManager themeManager = ThemeManager.getInstance();
+        playerList.setBackground(themeManager.getInputBackground());
+        playerList.setForeground(themeManager.getForeground());
+        playerList.setSelectionBackground(themeManager.getSelectionBackground());
+        playerList.setSelectionForeground(themeManager.getForeground());
         playerList.setFixedCellHeight(40);
 
         // Add right-click context menu
@@ -517,13 +520,19 @@ public class EnhancedPlayerListGui extends JPanel implements ThemeManager.ThemeL
         @Override
         public java.awt.Component getListCellRendererComponent(JList<? extends PlayerInfo> list, PlayerInfo player,
                                                       int index, boolean isSelected, boolean cellHasFocus) {
-            // Set background
+            ThemeManager themeManager = ThemeManager.getInstance();
+            Color cellForeground = isSelected ? list.getSelectionForeground() : themeManager.getForeground();
+
+            // Set background and foreground explicitly. A Swing cell renderer is
+            // reused outside the normal component hierarchy, so ThemeManager's
+            // recursive component pass cannot update these labels for us.
             if (isSelected) {
-                setBackground(ThemeManager.getInstance().getSelectionBackground());
+                setBackground(list.getSelectionBackground());
             } else {
-                ThemeManager themeManager = ThemeManager.getInstance();
                 setBackground(index % 2 == 0 ? themeManager.getInputBackground() : themeManager.getSurfaceBackground());
             }
+            nameLabel.setForeground(cellForeground);
+            infoLabel.setForeground(isSelected ? cellForeground : themeManager.getMutedForeground());
 
             // Set player head
             String uuid = player.profile.id().toString();
@@ -544,9 +553,13 @@ public class EnhancedPlayerListGui extends JPanel implements ThemeManager.ThemeL
             // Set info (gamemode)
             infoLabel.setText("Mode: " + player.gameMode.getName());
 
-            // Set ping with color coding
+            // Set ping with color coding. Use the selection foreground for a
+            // selected row so status colors never become unreadable on the
+            // themed selection background.
             pingLabel.setText(player.ping + " ms");
-            if (player.ping < 50) {
+            if (isSelected) {
+                pingLabel.setForeground(cellForeground);
+            } else if (player.ping < 50) {
                 pingLabel.setForeground(new Color(40, 180, 99));
             } else if (player.ping < 100) {
                 pingLabel.setForeground(new Color(241, 196, 15));
@@ -576,8 +589,12 @@ public class EnhancedPlayerListGui extends JPanel implements ThemeManager.ThemeL
             setBackground(themeManager.getPanelBackground());
             playerList.setBackground(themeManager.getInputBackground());
             playerList.setForeground(themeManager.getForeground());
+            playerList.setSelectionBackground(themeManager.getSelectionBackground());
+            playerList.setSelectionForeground(themeManager.getForeground());
             themeManager.applyComponentTheme(this);
             playerList.setBackground(themeManager.getInputBackground());
+            playerList.setSelectionBackground(themeManager.getSelectionBackground());
+            playerList.setSelectionForeground(themeManager.getForeground());
             playerCellRenderer = new PlayerCellRenderer();
             playerList.setCellRenderer(playerCellRenderer);
             playerList.repaint();
