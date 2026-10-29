@@ -1,11 +1,15 @@
 # Publishes one release from main, carrying one jar per supported Minecraft
 # branch.
 #
-# The version branches (mc-26.2, mc-26.3) never release: they run build-jar.yml
-# on every push. A v-prefixed commit on main builds each branch listed in the
-# prepare job through that same reusable workflow and publishes the jars
-# together, so the download page always offers the build that matches a
-# server's Minecraft version.
+# The version comes from version.txt on main: the tag and the release title are
+# the mod version only (1.3.1). The Minecraft version appears in the jar file
+# name (dedicatedpower-26.3-1.3.1.jar), so the download page still says which
+# build belongs to which Minecraft version.
+#
+# A push releases only when the commit message starts with "v". The version
+# branches (mc-26.2, mc-26.3) never release: they run build-jar.yml on every
+# push, and this workflow builds each of them through that same reusable
+# workflow.
 
 name: Auto Release
 
@@ -16,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 26.3-1.3.1). Leave empty to use version.txt.'
+        description: 'Version to release (e.g. 1.3.1). Leave empty to use version.txt.'
         required: false
         default: ''
         type: string
@@ -27,6 +31,7 @@ permissions:
 jobs:
   prepare:
     name: Resolve release version
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'v')
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.release.outputs.version }}
@@ -36,62 +41,40 @@ jobs:
       prerelease: ${{ steps.release.outputs.prerelease }}
       branches: ${{ steps.release.outputs.branches }}
     steps:
-      - name: Parse release version and channel
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read the release version
         id: release
         shell: bash
         env:
-          COMMIT_TITLE: ${{ github.event.head_commit.message }}
           VERSION_INPUT: ${{ inputs.version }}
-          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
 
-          # The first line of the commit on main is the release: either the bare
-          # version (v26.3-1.3.1) or the version plus a short description
-          # (v26.3-1.3.1: new console completion). Only the leading token is the
-          # version. A manual dispatch may pass the version directly.
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            RELEASE_INPUT="${VERSION_INPUT}"
-            if [[ -z "$RELEASE_INPUT" ]]; then
-              RELEASE_INPUT="$(tr -d '[:space:]' < version.txt)"
-            fi
-          else
-            RELEASE_INPUT="${COMMIT_TITLE%%$'\n'*}"
-          fi
-          RELEASE_INPUT="${RELEASE_INPUT#v}"
-          RELEASE_INPUT="${RELEASE_INPUT%%:*}"
-          RELEASE_INPUT="${RELEASE_INPUT%%$' '*}"
-          RELEASE_INPUT="${RELEASE_INPUT,,}"
-
-          if [[ "$RELEASE_INPUT" =~ ^(.+)-(stable|beta|alpha|rc)([.-]?[0-9]+)?$ ]]; then
-            BASE_VERSION="${BASH_REMATCH[1]}"
-            CHANNEL="${BASH_REMATCH[2]}"
-            CHANNEL_SUFFIX="${BASH_REMATCH[3]:-}"
-          else
-            BASE_VERSION="$RELEASE_INPUT"
-            CHANNEL="stable"
-            CHANNEL_SUFFIX=""
+          # The version is version.txt, not the commit title. A manual dispatch
+          # may override it.
+          VERSION="${VERSION_INPUT}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION="$(tr -d '[:space:]' < version.txt)"
           fi
 
-          if [[ ! "$BASE_VERSION" =~ ^[0-9]+([.][0-9]+)*(-[0-9]+([.][0-9]+)*)?$ ]]; then
-            echo "Invalid release commit format: v${RELEASE_INPUT}" >&2
-            echo "Expected examples: v26.3-1.3.1, v26.3-1.3.1-beta, v26.3-1.3.1-rc1" >&2
+          if [[ ! "$VERSION" =~ ^[0-9]+([.][0-9]+)*(-[A-Za-z0-9]+([.][0-9]+)*)?$ ]]; then
+            echo "Invalid release version: ${VERSION}" >&2
+            echo "Expected examples: 1.3.1, 1.3.1-beta, 1.3.1-rc1" >&2
             exit 1
           fi
 
-          if [[ "$CHANNEL" == "stable" && -z "$CHANNEL_SUFFIX" ]]; then
-            VERSION="$BASE_VERSION"
-            PRERELEASE=false
-          elif [[ "$CHANNEL" == "stable" ]]; then
-            VERSION="${BASE_VERSION}-stable${CHANNEL_SUFFIX}"
-            PRERELEASE=false
-          else
-            VERSION="${BASE_VERSION}-${CHANNEL}${CHANNEL_SUFFIX}"
+          if [[ "$VERSION" =~ ^(.+)-(beta|alpha|rc)([.][0-9]+)?$ ]]; then
+            CHANNEL="${BASH_REMATCH[2]}"
             PRERELEASE=true
+          else
+            CHANNEL="stable"
+            PRERELEASE=false
           fi
 
-          # The release tag has no "v" prefix (e.g. 26.3-1.3.1), even though the
-          # triggering commit message starts with "v".
+          # The tag and the title are the mod version only. The Minecraft
+          # target stays in the jar file name.
           TAG="${VERSION}"
           RELEASE_NAME="DedicatedPower ${VERSION}"
 
@@ -194,7 +177,7 @@ jobs:
           set -euo pipefail
 
           if git ls-remote --exit-code --refs origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
-            echo "A release tag named ${RELEASE_TAG} already exists. Use a new version in the commit message." >&2
+            echo "A release tag named ${RELEASE_TAG} already exists. Bump version.txt before the next release." >&2
             exit 1
           fi
 
@@ -211,7 +194,7 @@ jobs:
             ## DedicatedPower ${{ needs.prepare.outputs.version }}
 
             **Release channel:** `${{ needs.prepare.outputs.channel }}`
-            **Included builds:** one jar per supported Minecraft branch. Download the jar that matches your server version.
+            **Included builds:** one jar per supported Minecraft branch. The Minecraft version is part of the jar file name, so download the jar that matches your server.
 
             ${{ steps.changelog.outputs.section }}
 
