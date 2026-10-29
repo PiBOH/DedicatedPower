@@ -1,3 +1,12 @@
+# Publishes one release from main, carrying one jar per supported Minecraft
+# branch.
+#
+# The version branches (mc-26.2, mc-26.3) never release: they run build-jar.yml
+# on every push. A v-prefixed commit on main builds each branch listed in the
+# prepare job through that same reusable workflow and publishes the jars
+# together, so the download page always offers the build that matches a
+# server's Minecraft version.
+
 name: Auto Release
 
 on:
@@ -7,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 26.2-1.0.3-beta). Leave empty to use version.txt.'
+        description: 'Version to release (e.g. 26.3-1.3.1). Leave empty to use version.txt.'
         required: false
         default: ''
         type: string
@@ -16,29 +25,17 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and publish release
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'v')
+  prepare:
+    name: Resolve release version
     runs-on: ubuntu-24.04
-
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      name: ${{ steps.release.outputs.name }}
+      channel: ${{ steps.release.outputs.channel }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      branches: ${{ steps.release.outputs.branches }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          java-version: '25'
-          distribution: microsoft
-
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-
       - name: Parse release version and channel
         id: release
         shell: bash
@@ -49,23 +46,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          # On a push the first line of the commit message is used; on a manual
-          # dispatch the version input is used (falling back to version.txt).
-          # Examples:
-          #   v26.2-1.0.0     -> stable release
-          #   v26.2-1.0.0-beta -> beta prerelease
-          #   v26.2-1.0.0-alpha.1 -> alpha prerelease
-          #   v26.2-1.0.0-rc1 -> release-candidate prerelease
+          # The first line of the commit on main is the release: either the bare
+          # version (v26.3-1.3.1) or the version plus a short description
+          # (v26.3-1.3.1: new console completion). Only the leading token is the
+          # version. A manual dispatch may pass the version directly.
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             RELEASE_INPUT="${VERSION_INPUT}"
             if [[ -z "$RELEASE_INPUT" ]]; then
-              RELEASE_INPUT="$(cat version.txt)"
+              RELEASE_INPUT="$(tr -d '[:space:]' < version.txt)"
             fi
           else
             RELEASE_INPUT="${COMMIT_TITLE%%$'\n'*}"
           fi
           RELEASE_INPUT="${RELEASE_INPUT#v}"
-          RELEASE_INPUT="${RELEASE_INPUT// /-}"
+          RELEASE_INPUT="${RELEASE_INPUT%%:*}"
+          RELEASE_INPUT="${RELEASE_INPUT%%$' '*}"
           RELEASE_INPUT="${RELEASE_INPUT,,}"
 
           if [[ "$RELEASE_INPUT" =~ ^(.+)-(stable|beta|alpha|rc)([.-]?[0-9]+)?$ ]]; then
@@ -80,7 +75,7 @@ jobs:
 
           if [[ ! "$BASE_VERSION" =~ ^[0-9]+([.][0-9]+)*(-[0-9]+([.][0-9]+)*)?$ ]]; then
             echo "Invalid release commit format: v${RELEASE_INPUT}" >&2
-            echo "Expected examples: v26.2-1.0.0, v26.2-1.0.0-beta, v26.2-1.0.0-alpha.1, or v26.2-1.0.0-rc1" >&2
+            echo "Expected examples: v26.3-1.3.1, v26.3-1.3.1-beta, v26.3-1.3.1-rc1" >&2
             exit 1
           fi
 
@@ -95,29 +90,80 @@ jobs:
             PRERELEASE=true
           fi
 
-          # The release tag has no "v" prefix (e.g. 26.2-1.0.0-beta),
-          # even though the triggering commit message starts with "v".
+          # The release tag has no "v" prefix (e.g. 26.3-1.3.1), even though the
+          # triggering commit message starts with "v".
           TAG="${VERSION}"
           RELEASE_NAME="DedicatedPower ${VERSION}"
 
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "channel=${CHANNEL}" >> "$GITHUB_OUTPUT"
-          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          # Every Minecraft branch whose jar the release carries. Add a branch
+          # here when a new Minecraft line is added, and keep build-jar.yml on
+          # that branch so it can be built.
+          BRANCHES='["mc-26.2","mc-26.3"]'
+
+          {
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+            echo "name=${RELEASE_NAME}"
+            echo "channel=${CHANNEL}"
+            echo "prerelease=${PRERELEASE}"
+            echo "branches=${BRANCHES}"
+          } >> "$GITHUB_OUTPUT"
 
           echo "Version: ${VERSION}"
           echo "Channel: ${CHANNEL}"
           echo "Prerelease: ${PRERELEASE}"
           echo "Tag: ${TAG}"
+          echo "Branches: ${BRANCHES}"
+
+  build:
+    name: Build ${{ matrix.branch }}
+    needs: prepare
+    strategy:
+      # One failing branch must not stop the other jars from being released.
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.prepare.outputs.branches) }}
+    uses: ./.github/workflows/build-jar.yml
+    with:
+      ref: ${{ matrix.branch }}
+
+  release:
+    name: Publish release
+    needs: [prepare, build]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download every branch jar
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: dedicatedpower-*
+          merge-multiple: true
+
+      - name: Check the collected jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          JARS=(dist/*.jar)
+          if [[ ${#JARS[@]} -eq 0 ]]; then
+            echo "No branch produced a jar, nothing to publish." >&2
+            exit 1
+          fi
+          printf 'Publishing %d jar(s):\n' "${#JARS[@]}"
+          printf ' - %s\n' "${JARS[@]}"
 
       - name: Extract changelog section
         id: changelog
         shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
-
-          VERSION="${{ steps.release.outputs.version }}"
 
           # Grab the Keep a Changelog section for this version (## [<version>] ...)
           if [[ ! -f CHANGELOG.md ]]; then
@@ -143,7 +189,7 @@ jobs:
 
       - name: Check for an existing release tag
         env:
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           set -euo pipefail
 
@@ -152,51 +198,26 @@ jobs:
             exit 1
           fi
 
-      - name: Build mod
-        run: ./gradlew clean build -Pmod_version="${{ steps.release.outputs.version }}"
-
-      - name: Select release JAR
-        id: artifact
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          mapfile -t JARS < <(find build/libs -maxdepth 1 -type f -name '*.jar' \
-            ! -name '*-sources.jar' \
-            ! -name '*-dev.jar' \
-            -print | sort)
-
-          if [[ "${#JARS[@]}" -ne 1 ]]; then
-            echo "Expected exactly one release JAR, found ${#JARS[@]}" >&2
-            printf '%s\n' "${JARS[@]}"
-            ls -la build/libs
-            exit 1
-          fi
-
-          JAR="${JARS[0]}"
-          echo "path=${JAR}" >> "$GITHUB_OUTPUT"
-          echo "Selected artifact: ${JAR}"
-
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.release.outputs.tag }}
-          name: ${{ steps.release.outputs.name }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.name }}
           target_commitish: ${{ github.sha }}
-          prerelease: ${{ steps.release.outputs.prerelease }}
+          prerelease: ${{ needs.prepare.outputs.prerelease }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           body: |
-            ## DedicatedPower ${{ steps.release.outputs.version }}
+            ## DedicatedPower ${{ needs.prepare.outputs.version }}
 
-            **Release channel:** `${{ steps.release.outputs.channel }}`
-            **Minecraft target:** See the Minecraft version declared in the project metadata.
+            **Release channel:** `${{ needs.prepare.outputs.channel }}`
+            **Included builds:** one jar per supported Minecraft branch. Download the jar that matches your server version.
 
             ${{ steps.changelog.outputs.section }}
 
             ---
 
-            This release was built automatically from commit `${{ github.sha }}`.
-          files: ${{ steps.artifact.outputs.path }}
+            This release was built automatically from commit `${{ github.sha }}` on `main`.
+          files: dist/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

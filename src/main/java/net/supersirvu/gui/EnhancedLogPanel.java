@@ -12,11 +12,16 @@ import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.suggestion.Suggestion;
 import com.mojang.brigadier.suggestion.Suggestions;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.dedicated.DedicatedServer;
 
 import javax.swing.*;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
@@ -56,8 +61,8 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
     private DefaultListModel<SuggestionItem> suggestionModel;
     private JList<SuggestionItem> suggestionList;
     private CompletableFuture<Suggestions> pendingSuggestions;
-    private Suggestions currentSuggestions;
     private long suggestionGeneration;
+    private boolean suggestionsSuppressed;
 
     // Command history
     private final List<String> commandHistory = new ArrayList<>();
@@ -135,6 +140,7 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
         commandInput.addActionListener(e -> executeCommand());
         commandInput.addKeyListener(new CommandInputKeyListener());
         commandInput.addCaretListener(new CommandCaretListener());
+        commandInput.getDocument().addDocumentListener(new CommandDocumentListener());
 
         // Disable TAB focus traversal so TAB can be used for completion
         commandInput.setFocusTraversalKeysEnabled(false);
@@ -467,7 +473,6 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
         // Clear input
         commandInput.setText("");
         suggestionGeneration++;
-        currentSuggestions = null;
         hideSuggestions();
     }
 
@@ -479,21 +484,27 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
             return;
         }
 
+        // A leading slash is accepted by the console but is not part of the
+        // command syntax, so suggestions are computed on the text after it and
+        // every completion range is shifted back by one.
+        int offset = CommandSuggestionUtils.parseOffset(text);
+        String parseText = CommandSuggestionUtils.parseText(text);
+
         // Validate command syntax after Swing has completed the document change.
-        validateCommand(text);
+        validateCommand(parseText);
 
         try {
             // Get command dispatcher
             CommandDispatcher<CommandSourceStack> dispatcher = server.getCommands().getDispatcher();
 
             // Parse and get suggestions - with bounds checking
-            StringReader reader = new StringReader(text);
+            StringReader reader = new StringReader(parseText);
             ParseResults<CommandSourceStack> parse = dispatcher.parse(reader, server.createCommandSourceStack());
 
             // Capture the caret together with the text. A completion range is
             // valid only if neither the text nor the caret moved while Brigadier
             // calculated the asynchronous result.
-            int cursorPos = Math.min(commandInput.getCaretPosition(), text.length());
+            int cursorPos = cursorPosition(text);
 
             pendingSuggestions = dispatcher.getCompletionSuggestions(parse, cursorPos);
             pendingSuggestions.thenAccept(suggestions -> {
@@ -502,15 +513,14 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                     // They must never overwrite the user's current typing state.
                     if (generation != suggestionGeneration
                             || !text.equals(commandInput.getText())
-                            || cursorPos != commandInput.getCaretPosition()) {
+                            || cursorPos != cursorPosition(text)) {
                         return;
                     }
                     suggestionModel.clear();
-                    currentSuggestions = suggestions;
 
                     if (!suggestions.isEmpty()) {
                         for (Suggestion suggestion : suggestions.getList()) {
-                            suggestionModel.addElement(new SuggestionItem(suggestion));
+                            suggestionModel.addElement(new SuggestionItem(suggestion, offset));
                         }
 
                         if (suggestionModel.size() > 0) {
@@ -528,7 +538,7 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                 SwingUtilities.invokeLater(() -> {
                     if (generation == suggestionGeneration
                             && text.equals(commandInput.getText())
-                            && commandInput.getCaretPosition() == cursorPos) {
+                            && cursorPosition(text) == cursorPos) {
                         hideSuggestions();
                     }
                 });
@@ -554,7 +564,61 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                 : ThemeManager.getInstance().getLogColor(LogLevel.ERROR));
     }
 
+    /** The caret position as Brigadier sees it, i.e. relative to the parse text. */
+    private int cursorPosition(String text) {
+        int offset = CommandSuggestionUtils.parseOffset(text);
+        int length = CommandSuggestionUtils.parseText(text).length();
+        return Math.min(Math.max(0, commandInput.getCaretPosition() - offset), length);
+    }
+
+    /**
+     * Whether a fully qualified id exists in a built-in registry. This is what
+     * lets an argument such as {@code oak_button} complete as
+     * {@code minecraft:oak_button} without touching player names, numbers or
+     * free text.
+     */
+    private static boolean isRegistryId(String id) {
+        Identifier identifier = Identifier.tryParse(id);
+        return identifier != null && KnownIds.contains(identifier.toString());
+    }
+
+    /**
+     * Every id of every built-in registry, collected once on first use so a
+     * keystroke never walks the registries for each of the suggestions.
+     */
+    private static final class KnownIds {
+        private static volatile Set<String> ids;
+
+        private KnownIds() {
+        }
+
+        static boolean contains(String id) {
+            Set<String> current = ids;
+            if (current == null) {
+                try {
+                    Set<String> collected = new HashSet<>();
+                    for (Registry<?> registry : BuiltInRegistries.REGISTRY) {
+                        for (Identifier identifier : registry.keySet()) {
+                            collected.add(identifier.toString());
+                        }
+                    }
+                    current = collected;
+                    ids = collected;
+                } catch (RuntimeException ignored) {
+                    // Registries are not always reachable (for example during
+                    // startup); completion still works, it just stays unqualified.
+                    return false;
+                }
+            }
+            return current.contains(id);
+        }
+    }
+
     private void showSuggestions() {
+        if (!commandInput.isShowing()) {
+            hideSuggestions();
+            return;
+        }
         Point location = commandInput.getLocationOnScreen();
         suggestionWindow.setLocation(location.x, location.y - suggestionWindow.getHeight());
         suggestionWindow.setVisible(true);
@@ -567,40 +631,32 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
 
     private void applySuggestion() {
         SuggestionItem selected = suggestionList.getSelectedValue();
-        if (selected != null && currentSuggestions != null) {
-            Suggestion suggestion = selected.suggestion;
-
-            // Get the current text
-            String currentText = commandInput.getText();
-
-            // Get the range to replace from the suggestion
-            int start = suggestion.getRange().getStart();
-            int end = suggestion.getRange().getEnd();
-
-            // Ensure bounds are valid
-            if (start < 0 || end > currentText.length() || start > end) {
-                hideSuggestions();
-                return;
-            }
-
-            // Build the new command text
-            String before = currentText.substring(0, start);
-            String after = currentText.substring(end);
-            String newText = before + suggestion.getText() + after;
-
-            // Suggestions are requested explicitly (TAB/double-click), so there
-            // is no document listener to race with this intentional replacement.
-            commandInput.setText(newText);
-
-            // Position cursor at the end of the inserted suggestion
-            int newCaretPos = start + suggestion.getText().length();
-            commandInput.setCaretPosition(newCaretPos);
-
-            suggestionGeneration++;
-            currentSuggestions = null;
+        if (selected == null) {
             hideSuggestions();
-            commandInput.requestFocus();
+            return;
         }
+
+        String currentText = commandInput.getText();
+        if (selected.start < 0 || selected.end > currentText.length() || selected.start > selected.end) {
+            hideSuggestions();
+            return;
+        }
+
+        // Build the new command text from the token range Brigadier proposed,
+        // shifted back by the leading slash when the console has one.
+        String newText = currentText.substring(0, selected.start)
+                + selected.text
+                + currentText.substring(selected.end);
+
+        // The replacement is intentional, so the document listener must not
+        // reopen the list on the text it just produced.
+        suggestionsSuppressed = true;
+        commandInput.setText(newText);
+        commandInput.setCaretPosition(Math.min(newText.length(), selected.start + selected.text.length()));
+
+        suggestionGeneration++;
+        hideSuggestions();
+        commandInput.requestFocus();
     }
 
     private void showFilterDialog() {
@@ -661,6 +717,9 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
             logTextPane.setForeground(themeManager.getForeground());
             commandInput.setBackground(themeManager.getInputBackground());
             commandInput.setForeground(themeManager.getForeground());
+            suggestionList.setBackground(themeManager.getInputBackground());
+            suggestionList.setForeground(themeManager.getForeground());
+            suggestionList.setBorder(BorderFactory.createLineBorder(themeManager.getBorderColor()));
 
             for (LogLevel level : LogLevel.values()) {
                 StyleConstants.setForeground(logStyles.get(level), themeManager.getLogColor(level));
@@ -753,8 +812,9 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
                     && keyCode != KeyEvent.VK_ESCAPE) {
                 // Any normal edit invalidates pending completion ranges. Never
                 // let an async suggestion act on text that changed afterwards.
+                // Typing also re-enables live suggestions after a completion.
+                suggestionsSuppressed = false;
                 suggestionGeneration++;
-                currentSuggestions = null;
                 hideSuggestions();
             }
 
@@ -824,7 +884,6 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
 
     private void navigateHistory(int direction) {
         suggestionGeneration++;
-        currentSuggestions = null;
         hideSuggestions();
         if (commandHistory.isEmpty()) return;
 
@@ -843,22 +902,56 @@ public class EnhancedLogPanel extends JPanel implements ThemeManager.ThemeListen
             // Mouse clicks and programmatic history changes can move the caret
             // without producing a key event. Invalidate completion ranges then.
             suggestionGeneration++;
-            currentSuggestions = null;
             hideSuggestions();
         }
     }
 
+    /**
+     * Live completion: the list follows what is typed. It only reads the text
+     * and moves a non-focusable popup, so it can never reorder the characters
+     * of the command itself.
+     */
+    private class CommandDocumentListener implements DocumentListener {
+        @Override
+        public void insertUpdate(DocumentEvent event) {
+            scheduleSuggestions();
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent event) {
+            scheduleSuggestions();
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent event) {
+        }
+    }
+
+    private void scheduleSuggestions() {
+        if (suggestionsSuppressed) {
+            return;
+        }
+        // Run after Swing has finished the document change, so Brigadier always
+        // parses the text the user can see.
+        SwingUtilities.invokeLater(this::updateSuggestions);
+    }
+
     // Wrapper class for suggestions
     private static class SuggestionItem {
-        final Suggestion suggestion;
+        final String text;
+        final int start;
+        final int end;
 
-        SuggestionItem(Suggestion suggestion) {
-            this.suggestion = suggestion;
+        SuggestionItem(Suggestion suggestion, int offset) {
+            this.text = CommandSuggestionUtils.displayText(suggestion.getText(),
+                    suggestion.getRange().getStart(), EnhancedLogPanel::isRegistryId);
+            this.start = suggestion.getRange().getStart() + offset;
+            this.end = suggestion.getRange().getEnd() + offset;
         }
 
         @Override
         public String toString() {
-            return suggestion.getText();
+            return text;
         }
     }
 
