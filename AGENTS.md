@@ -69,9 +69,13 @@ Rules:
   (build files, wrapper, README badge, changelog entry) is not backported.
 - `main` is the repository default branch and currently carries the 26.2 line.
   Do not push version-specific work to it unless the owner asks.
-- **Auto Release publishes one jar per branch.** `.github/workflows/auto-release.yml`
-  triggers on a `v` commit pushed to the branch it lives on and builds that
-  branch, so both branches release independently.
+- **Only `main` publishes releases.** `mc-26.2` and `mc-26.3` build and test on
+  every push through the shared `.github/workflows/build-jar.yml` (called by
+  `build.yml`) and never create a release. A `v` commit on `main` makes its
+  `auto-release.yml` build every supported branch through the same reusable
+  workflow and publish one release carrying one jar per branch. Adding a
+  Minecraft line means adding its branch to the list in that workflow and
+  keeping `build-jar.yml` on it.
 - Never create scratch branches. Do the work on the branch that owns it.
 
 ## 4. Versioning, changelog and commits
@@ -105,8 +109,10 @@ quotations of a report or of the owner's own words.
 
 - **Every commit that changes program code starts with `v<version from
   version.txt>:`** followed by a short description, for example
-  `v26.3-1.3.0: fix MOTD encoding and console completion`. The prefix is what
-  triggers `Auto Release`; a bare `v:` is invalid and never releases anything.
+  `v26.3-1.3.0: fix MOTD encoding and console completion`. On `main` the prefix
+  triggers `Auto Release`; on a version branch it only triggers the normal
+  build, because releases are published from `main` only. A bare `v:` is invalid
+  and never releases anything.
 - **English only**, title and body.
 - **No co-author, no attribution footer.** Never add `Co-Authored-By:` or
   "Generated with" lines, and never credit the agent or the client.
