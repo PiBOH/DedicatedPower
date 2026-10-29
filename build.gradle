@@ -4,12 +4,15 @@ plugins {
 }
 
 // version.txt is the single source of truth for the mod version. Loom, the
-// fabric.mod.json expansion and the CI all read the same file.
+// fabric.mod.json expansion and the CI all read the same file. The Minecraft
+// version stays in gradle.properties and only appears in the archive name, so
+// the jar is dedicatedpower-<minecraft>-<mod>.jar and a release tag is just the
+// mod version.
 version = file('version.txt').text.trim()
 group = project.maven_group
 
 base {
-	archivesName = project.archives_base_name
+	archivesName = "${project.archives_base_name}-${project.minecraft_version}"
 }
 
 repositories {

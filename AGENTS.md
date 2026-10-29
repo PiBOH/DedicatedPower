@@ -82,18 +82,21 @@ Rules:
 
 ### `version.txt` is the single version source
 
-`version.txt` holds one line, `<minecraft>-<semver>`, for example `26.3-1.3.0`.
-`build.gradle` reads it (`version = file('version.txt').text.trim()`), Loom puts
-that version in the jar name and `processResources` expands it into
-`fabric.mod.json`. **Do not add a second copy of the version anywhere**, and do
+`version.txt` holds one line, the mod version only, for example `1.3.1`.
+`build.gradle` reads it (`version = file('version.txt').text.trim()`), sets the
+archive name to `<mod>-<minecraft_version>-<version>` and `processResources`
+expands the version into `fabric.mod.json`. The jar is therefore
+`dedicatedpower-26.3-1.3.1.jar`: the Minecraft version appears in the file name
+and nowhere else. **Do not add a second copy of the version anywhere**, and do
 not edit the jar name or the metadata by hand.
 
 - **MINOR** (`1.3.0` -> `1.4.0`): new features.
 - **PATCH** (`1.3.0` -> `1.3.1`): compatible fixes and documentation-only
   program changes.
 - **MAJOR**: only for genuinely breaking changes.
-- A Minecraft version change also changes the prefix (`26.2-` -> `26.3-`) and
-  is treated as a MINOR update of the mod version.
+- The Minecraft target lives in `gradle.properties` (`minecraft_version`) and
+  in the jar file name. It never goes into `version.txt`, a release tag or a
+  release title.
 - When the owner names the segment in the message, use that segment for that
   message only.
 
@@ -107,12 +110,11 @@ quotations of a report or of the owner's own words.
 
 ### Commits
 
-- **Every commit that changes program code starts with `v<version from
-  version.txt>:`** followed by a short description, for example
-  `v26.3-1.3.0: fix MOTD encoding and console completion`. On `main` the prefix
-  triggers `Auto Release`; on a version branch it only triggers the normal
-  build, because releases are published from `main` only. A bare `v:` is invalid
-  and never releases anything.
+- **Every commit that changes program code starts with `v`**, for example
+  `v: fix MOTD encoding and console completion`. The title does not carry the
+  version: `Auto Release` reads `version.txt` on `main` and uses that value for
+  the tag and the release title. On a version branch the prefix only triggers
+  the normal build, because releases are published from `main` only.
 - **English only**, title and body.
 - **No co-author, no attribution footer.** Never add `Co-Authored-By:` or
   "Generated with" lines, and never credit the agent or the client.
