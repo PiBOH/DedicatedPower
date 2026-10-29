@@ -6,7 +6,10 @@
 name: test
 on:
   pull_request:
+  # Branches only: creating or renaming a release tag must not start a build.
   push:
+    branches:
+      - '**'
   workflow_dispatch:
 
 jobs:
