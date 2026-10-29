@@ -55,10 +55,14 @@ import java.lang.ref.WeakReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CopyOnWriteArrayList;
+import javax.swing.text.Caret;
+import javax.swing.text.JTextComponent;
 
 /** Centralized appearance settings for the DedicatedPower Swing interface. */
 public final class ThemeManager {
@@ -167,20 +171,81 @@ public final class ThemeManager {
         notifyListeners();
     }
 
+    /**
+     * Applies the current theme to one window and to every other open window.
+     *
+     * <p>Reinstalling a Swing UI moves the caret of every text component to
+     * position 0. Because this pass runs whenever a window opens (the command
+     * completion popup is a window), it used to fire while the user was typing
+     * in the console and the remaining characters were inserted in front of the
+     * first one, turning {@code give} into {@code iveg}. The caret and the
+     * selection of every text component are captured before the update and put
+     * back immediately after it, on the same event dispatch turn.</p>
+     */
     public void applyTo(Window window) {
         applySwingDefaults();
+
+        List<Window> windows = windowsToUpdate(window);
+        List<TextSelection> selections = new ArrayList<>();
+        for (Window openWindow : windows) {
+            captureSelections(openWindow, selections);
+        }
+
+        for (Window openWindow : windows) {
+            SwingUtilities.updateComponentTreeUI(openWindow);
+            applyComponentTheme(openWindow);
+            openWindow.repaint();
+        }
+
+        restoreSelections(selections);
+    }
+
+    private static List<Window> windowsToUpdate(Window window) {
+        List<Window> windows = new ArrayList<>();
         if (window != null) {
-            SwingUtilities.updateComponentTreeUI(window);
-            applyComponentTheme(window);
-            window.repaint();
+            windows.add(window);
         }
         for (Window openWindow : Window.getWindows()) {
             if (openWindow != window && openWindow.isDisplayable()) {
-                SwingUtilities.updateComponentTreeUI(openWindow);
-                applyComponentTheme(openWindow);
-                openWindow.repaint();
+                windows.add(openWindow);
             }
         }
+        return windows;
+    }
+
+    /** Remembers the caret and the selection of every text component in a tree. */
+    private static void captureSelections(Component component, List<TextSelection> selections) {
+        if (component instanceof JTextComponent textComponent) {
+            Caret caret = textComponent.getCaret();
+            if (caret != null) {
+                selections.add(new TextSelection(textComponent, caret.getDot(), caret.getMark()));
+            }
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                captureSelections(child, selections);
+            }
+        }
+    }
+
+    /** Puts the captured carets back, clamped to the current text length. */
+    private static void restoreSelections(List<TextSelection> selections) {
+        for (TextSelection selection : selections) {
+            JTextComponent textComponent = selection.component();
+            int length = textComponent.getDocument().getLength();
+            int dot = Math.min(Math.max(selection.dot(), 0), length);
+            int mark = Math.min(Math.max(selection.mark(), 0), length);
+
+            if (textComponent.getCaretPosition() != dot) {
+                textComponent.setCaretPosition(dot);
+            }
+            if (mark != dot && textComponent.getCaret().getMark() != mark) {
+                textComponent.moveCaretPosition(mark);
+            }
+        }
+    }
+
+    private record TextSelection(JTextComponent component, int dot, int mark) {
     }
 
     private void applySwingDefaults() {

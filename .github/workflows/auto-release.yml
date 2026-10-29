@@ -1,14 +1,15 @@
 # Publishes one release from main, carrying one jar per supported Minecraft
 # branch.
 #
-# The version comes from version.txt on main: the tag and the release title are
-# the mod version only (1.3.1). The Minecraft version appears in the jar file
-# name (dedicatedpower-26.3-1.3.1.jar), so the download page still says which
-# build belongs to which Minecraft version.
+# The version comes from version.txt on main, which holds
+# <minecraft>-<mod version> (26.3-1.3.2). The tag and the release title are the
+# mod version only (1.3.2). The Minecraft version appears in the jar file name
+# (dedicatedpower-26.3-1.3.2.jar), so the download page still says which build
+# belongs to which Minecraft version.
 #
 # A push releases only when the commit message starts with "v". The version
-# branches (mc-26.2, mc-26.3) never release: they run build-jar.yml on every
-# push, and this workflow builds each of them through that same reusable
+# branches (mc-26.1, mc-26.2, mc-26.3) never release: they run build-jar.yml on
+# every push, and this workflow builds each of them through that same reusable
 # workflow.
 
 name: Auto Release
@@ -20,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 1.3.1). Leave empty to use version.txt.'
+        description: 'Mod version to release (e.g. 1.3.2). Leave empty to use version.txt.'
         required: false
         default: ''
         type: string
@@ -52,16 +53,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          # The version is version.txt, not the commit title. A manual dispatch
-          # may override it.
-          VERSION="${VERSION_INPUT}"
-          if [[ -z "$VERSION" ]]; then
-            VERSION="$(tr -d '[:space:]' < version.txt)"
-          fi
+          # version.txt holds <minecraft>-<mod version>, for example
+          # 26.3-1.3.2. The tag and the title use the part after the first
+          # hyphen, so every Minecraft branch of one release shares the same
+          # mod version. A manual dispatch may override that mod version.
+          FILE_VERSION="$(tr -d '[:space:]' < version.txt)"
+          VERSION="${VERSION_INPUT:-${FILE_VERSION#*-}}"
 
           if [[ ! "$VERSION" =~ ^[0-9]+([.][0-9]+)*(-[A-Za-z0-9]+([.][0-9]+)*)?$ ]]; then
             echo "Invalid release version: ${VERSION}" >&2
-            echo "Expected examples: 1.3.1, 1.3.1-beta, 1.3.1-rc1" >&2
+            echo "version.txt must look like 26.3-1.3.2; the mod part may be 1.3.2, 1.3.2-beta or 1.3.2-rc1." >&2
             exit 1
           fi
 
@@ -81,7 +82,7 @@ jobs:
           # Every Minecraft branch whose jar the release carries. Add a branch
           # here when a new Minecraft line is added, and keep build-jar.yml on
           # that branch so it can be built.
-          BRANCHES='["mc-26.2","mc-26.3"]'
+          BRANCHES='["mc-26.1","mc-26.2","mc-26.3"]'
 
           {
             echo "version=${VERSION}"
