@@ -82,7 +82,7 @@ DedicatedPower is not intended for single-player worlds or the integrated server
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 26.3.
 2. Install [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.3.
 3. Install Java 25 or newer.
-4. Download the latest DedicatedPower release from the [Releases](https://github.com/PiBOH/DedicatedPower/releases) page.
+4. Download the latest DedicatedPower release from the [Releases](https://github.com/PiBOH/DedicatedPower/releases) page. Each release carries one jar per supported Minecraft version (26.1, 26.2 and 26.3), so pick the jar that matches your server.
 5. Place the DedicatedPower `.jar` file in the server's `mods` folder.
 6. Start the dedicated server.
 
@@ -129,7 +129,7 @@ The compiled files are generated in `build/libs/`.
 
 ## Development status
 
-DedicatedPower is actively being updated for Minecraft 26.3. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions. The previous Minecraft 26.2 build is kept on its own branch.
+DedicatedPower is actively being updated for Minecraft 26.3. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions. The Minecraft 26.1, 26.2 and 26.3 builds are kept on their own branches and published together in every release.
 
 The project currently focuses on the dedicated server GUI and administration workflow. Some advanced features from earlier versions may be reintroduced or expanded in future updates.
 
