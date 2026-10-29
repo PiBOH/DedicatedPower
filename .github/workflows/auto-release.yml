@@ -141,6 +141,31 @@ jobs:
           printf 'Publishing %d jar(s):\n' "${#JARS[@]}"
           printf ' - %s\n' "${JARS[@]}"
 
+      - name: List the builds
+        id: builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          # One table row per jar, ordered by Minecraft version, so the release
+          # page says which download belongs to which server instead of only
+          # naming the files.
+          {
+            echo "list<<BUILDS_EOF"
+            echo "| Minecraft | Jar |"
+            echo "| --- | --- |"
+            for jar in $(printf '%s\n' dist/*.jar | sort -V); do
+              name="$(basename "$jar")"
+              if [[ "$name" =~ ^dedicatedpower-([0-9]+([.][0-9]+)*)-.*[.]jar$ ]]; then
+                echo "| ${BASH_REMATCH[1]} | \`${name}\` |"
+              else
+                echo "| unknown | \`${name}\` |"
+              fi
+            done
+            echo "BUILDS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Extract changelog section
         id: changelog
         shell: bash
@@ -195,7 +220,12 @@ jobs:
             ## DedicatedPower ${{ needs.prepare.outputs.version }}
 
             **Release channel:** `${{ needs.prepare.outputs.channel }}`
-            **Included builds:** one jar per supported Minecraft branch. The Minecraft version is part of the jar file name, so download the jar that matches your server.
+
+            **Download**
+
+            ${{ steps.builds.outputs.list }}
+
+            Pick the jar that matches your server: install Fabric Loader and the Fabric API for that Minecraft version, then put the jar in the server `mods` folder.
 
             ${{ steps.changelog.outputs.section }}
 

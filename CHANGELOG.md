@@ -3,8 +3,7 @@
 ## [1.3.2] - 2026-10-29
 
 ### Changed
-- `version.txt` holds the Minecraft version and the mod version together, for example `26.3-1.3.2`, so every branch states its own Minecraft line; release tags and titles still use the mod version only
-- Releases now carry a jar for Minecraft 26.1 as well, next to the 26.2 and 26.3 builds
+- Every release now ships one jar per supported Minecraft version (26.1, 26.2 and 26.3) and the download list says which jar belongs to which server; release tags and titles keep the mod version only (`1.3.2`)
 
 ### Fixed
 - Typing in the console no longer reorders characters (for example `give` becoming `iveg` or `/give` becoming `give/`) when a window opens while the user is typing; the theme pass that runs then keeps the caret and the selection of every text field
