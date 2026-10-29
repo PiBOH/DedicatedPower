@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-26.2-2E7D32?style=for-the-badge&logo=minecraft" alt="Minecraft 26.2">
+  <img src="https://img.shields.io/badge/Minecraft-26.1.2-2E7D32?style=for-the-badge&logo=minecraft" alt="Minecraft 26.1.2">
   <img src="https://img.shields.io/badge/Fabric-0.19.3%2B-1769aa?style=for-the-badge&logo=fabric" alt="Fabric">
   <img src="https://img.shields.io/badge/Java-25%2B-orange?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 25+">
 </p>
@@ -27,7 +27,7 @@ It replaces the default server administration window with a cleaner interface fo
 
 ## Compatibility
 
-- **Minecraft:** Java Edition 26.2 (Chaos Cubed)
+- **Minecraft:** Java Edition 26.1.2 (Chaos Cubed)
 - **Platform:** Fabric
 - **Environment:** Dedicated servers only
 - **Fabric Loader:** 0.19.3 or newer
@@ -79,8 +79,8 @@ DedicatedPower is not intended for single-player worlds or the integrated server
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 26.2.
-2. Install [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.2.
+1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 26.1.2.
+2. Install [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.1.2.
 3. Install Java 25 or newer.
 4. Download the latest DedicatedPower release from the [Releases](https://github.com/PiBOH/DedicatedPower/releases) page. Each release carries one jar per supported Minecraft version (26.1, 26.2 and 26.3), so pick the jar that matches your server.
 5. Place the DedicatedPower `.jar` file in the server's `mods` folder.
@@ -129,7 +129,7 @@ The compiled files are generated in `build/libs/`.
 
 ## Development status
 
-DedicatedPower is actively being updated for Minecraft 26.2. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions. The Minecraft 26.1, 26.2 and 26.3 builds are kept on their own branches and published together in every release.
+DedicatedPower is actively being updated for Minecraft 26.1.2. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions. The Minecraft 26.1, 26.2 and 26.3 builds are kept on their own branches and published together in every release.
 
 The project currently focuses on the dedicated server GUI and administration workflow. Some advanced features from earlier versions may be reintroduced or expanded in future updates.
 
@@ -137,7 +137,7 @@ The project currently focuses on the dedicated server GUI and administration wor
 
 Before opening an issue, make sure that:
 
-- You are using Minecraft 26.2.
+- You are using Minecraft 26.1.2.
 - You are using Java 25 or newer.
 - You are using compatible Fabric Loader and Fabric API versions.
 - You have searched existing issues.
