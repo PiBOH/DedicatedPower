@@ -67,7 +67,12 @@ jobs:
           else
             RELEASE_INPUT="${COMMIT_TITLE%%$'\n'*}"
           fi
+          # The title is either the bare version (v26.2-1.0.0) or the version
+          # followed by a short description (v26.2-1.0.0: fixed the console).
+          # Only the leading version token is the release version.
           RELEASE_INPUT="${RELEASE_INPUT#v}"
+          RELEASE_INPUT="${RELEASE_INPUT%%:*}"
+          RELEASE_INPUT="${RELEASE_INPUT%%$' '*}"
           RELEASE_INPUT="${RELEASE_INPUT// /-}"
           RELEASE_INPUT="${RELEASE_INPUT,,}"
 
@@ -156,7 +161,9 @@ jobs:
           fi
 
       - name: Build mod
-        run: ./gradlew clean build -Pmod_version="${{ steps.release.outputs.version }}"
+        # version.txt is the single source of the mod version, so the build
+        # reads it directly and the parsed release version is only the tag.
+        run: ./gradlew clean build
 
       - name: Select release JAR
         id: artifact
