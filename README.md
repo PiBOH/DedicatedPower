@@ -56,7 +56,9 @@ DedicatedPower is not intended for single-player worlds or the integrated server
 
 - Live server log output with color-coded log levels
 - Dedicated command console panel
-- Command execution directly from the GUI
+- Command execution directly from the GUI, with or without a leading slash
+- Live command suggestions while typing and on Tab
+- Registry ids complete with the default namespace: `oak_button` becomes `minecraft:oak_button`
 - Command history with the Up and Down arrow keys
 - Clearable console output
 
@@ -90,11 +92,14 @@ Always make a backup of your server before installing or updating mods.
 
 DedicatedPower is loaded automatically when the dedicated server starts. The enhanced server window is created by the mod and can be used to monitor the server and run commands. The console panel streams live server log output with color-coded levels and accepts commands entered through the GUI.
 
-Use the **Server**, **World**, and **Tools** menus to access the available controls. Commands should be entered without the leading slash, for example:
+Use the **Server**, **World**, and **Tools** menus to access the available controls. Commands can be entered with or without the leading slash, for example:
 
 ```text
 save-all
+/save-all
 ```
+
+Suggestions follow what you type: the list opens above the input, `Tab` applies the selected entry, `Up` and `Down` move through the list (or through the command history when it is closed), and `Esc` dismisses it. Registry ids are completed with the default namespace, so typing `oak` offers `minecraft:oak_button`.
 
 ## Building from source
 
@@ -124,7 +129,7 @@ The compiled files are generated in `build/libs/`.
 
 ## Development status
 
-DedicatedPower is actively being updated for Minecraft 26.2. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions.
+DedicatedPower is actively being updated for Minecraft 26.2. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions. The Minecraft 26.3 build is kept on its own branch.
 
 The project currently focuses on the dedicated server GUI and administration workflow. Some advanced features from earlier versions may be reintroduced or expanded in future updates.
 

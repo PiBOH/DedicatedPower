@@ -40,8 +40,6 @@ public class EnhancedPlayerStatsGui extends JComponent implements ThemeManager.T
     private final Timer timer;
 
     // Colors
-    private static final Color BG_COLOR = new Color(255, 255, 255);
-    private static final Color TEXT_COLOR = new Color(0, 0, 0);
     private static final Color MEMORY_GOOD = new Color(40, 180, 99);
     private static final Color MEMORY_WARNING = new Color(241, 196, 15);
     private static final Color MEMORY_CRITICAL = new Color(231, 76, 60);
@@ -235,7 +233,9 @@ public class EnhancedPlayerStatsGui extends JComponent implements ThemeManager.T
     }
 
     private void drawStats(Graphics2D g2d, int y) {
-        g2d.setColor(TEXT_COLOR);
+        // The stats lines are painted by this component, not by a Swing label,
+        // so they follow the active theme explicitly instead of staying black.
+        g2d.setColor(ThemeManager.getInstance().getForeground());
         g2d.setFont(new Font("Monospaced", Font.PLAIN, 11));
 
         for (int i = 0; i < this.lines.length; i++) {
@@ -283,7 +283,7 @@ public class EnhancedPlayerStatsGui extends JComponent implements ThemeManager.T
                 ? new Color(70, 70, 70, 220)
                 : new Color(255, 255, 255, 200));
         g2d.fillRoundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 5, 5);
-        g2d.setColor(TEXT_COLOR);
+        g2d.setColor(ThemeManager.getInstance().getForeground());
         g2d.drawRoundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 5, 5);
 
         g2d.setFont(new Font("Arial", Font.PLAIN, 10));

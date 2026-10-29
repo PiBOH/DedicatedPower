@@ -1,5 +1,22 @@
 # Changelog
 
+## [26.2-1.3.0] - 2026-10-29
+
+### Added
+- Live command suggestions while typing, with or without a leading slash, in addition to `Tab` completion
+- Registry ids are completed with the default namespace, so `oak_button` becomes `minecraft:oak_button`, like the Aternos console
+- The console now prints a message when the GUI is closed, mirroring the existing `/opengui` message
+- JUnit coverage for the UTF-8 properties round trip and for the completion rules
+
+### Changed
+- `version.txt` is now the only place the mod version is defined; the build and the jar metadata read it
+- `server.properties` and the saved MOTD history are read and written as UTF-8, with an ISO-8859-1 fallback for files written by older builds
+
+### Fixed
+- MOTD formatting codes no longer turn into `Â§` when a MOTD is saved from the editor
+- The memory, average tick, TPS, entities, chunks and uptime lines, together with the graph tooltip, now follow the theme and are readable in Dark mode
+- Command suggestions appear again while typing; the popup never edits the command field, so typed characters keep their order
+
 ## [26.2-1.2.17] - 2026-08-11
 
 ### Fixed

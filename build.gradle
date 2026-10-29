@@ -3,7 +3,9 @@ plugins {
 	id 'maven-publish'
 }
 
-version = project.mod_version
+// version.txt is the single source of truth for the mod version. Loom, the
+// fabric.mod.json expansion and the CI all read the same file.
+version = file('version.txt').text.trim()
 group = project.maven_group
 
 base {
