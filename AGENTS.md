@@ -23,7 +23,7 @@ server controls, and a themed menu bar.
 |---|---|
 | `build.gradle` | Loom plugin, dependencies, `version` read from `version.txt` |
 | `gradle.properties` | Minecraft, Fabric Loader, Loom and Fabric API versions |
-| `version.txt` | **single source of truth** for the mod version |
+| `version.txt` | **single source of truth** for the version, `<minecraft>-<mod version>` |
 | `src/main/resources/fabric.mod.json` | mod metadata, loader and API constraints |
 | `src/main/resources/dedicatedpower.mixins.json` | mixin list and compatibility level |
 | `src/main/resources/dedicatedpower.accesswidener` | access widener (currently empty) |
@@ -53,6 +53,7 @@ value leaves the window blank. `CaptureNoGuiMixin` only records `--nogui`, and
 
 Each supported Minecraft version lives on its own branch:
 
+- `mc-26.1` - the Minecraft 26.1 build (`minecraft_version=26.1.2`).
 - `mc-26.2` - the Minecraft 26.2 build.
 - `mc-26.3` - the Minecraft 26.3 build.
 
@@ -62,41 +63,45 @@ Rules:
   Loader, Fabric API, Loom and Gradle versions it was created with, plus its own
   `version.txt`, README and changelog entry.
 - **A behaviour fix belongs to every supported branch.** When a change to the
-  mod code applies to both versions, it is committed on `mc-26.2` and on
-  `mc-26.3` with equivalent code, each with its own version bump. A fix on only
-  one branch is unfinished work.
+  mod code applies to all versions, it is committed on `mc-26.1`, `mc-26.2` and
+  `mc-26.3` with equivalent code, each with its own version in `version.txt`. A
+  fix on only one branch is unfinished work.
 - **Version-specific work stays on its branch.** The Minecraft 26.3 port itself
   (build files, wrapper, README badge, changelog entry) is not backported.
-- `main` is the repository default branch and currently carries the 26.2 line.
-  Do not push version-specific work to it unless the owner asks.
-- **Only `main` publishes releases.** `mc-26.2` and `mc-26.3` build and test on
-  every push through the shared `.github/workflows/build-jar.yml` (called by
-  `build.yml`) and never create a release. A `v` commit on `main` makes its
-  `auto-release.yml` build every supported branch through the same reusable
-  workflow and publish one release carrying one jar per branch. Adding a
-  Minecraft line means adding its branch to the list in that workflow and
-  keeping `build-jar.yml` on it.
+- `main` is the repository default branch and carries the newest line (26.3)
+  plus the release workflow. Do not push version-specific work to it unless the
+  owner asks.
+- **Only `main` publishes releases.** `mc-26.1`, `mc-26.2` and `mc-26.3` build
+  and test on every push through the shared
+  `.github/workflows/build-jar.yml` (called by `build.yml`) and never create a
+  release. A `v` commit on `main` makes its `auto-release.yml` build every
+  supported branch through the same reusable workflow and publish one release
+  carrying one jar per branch. Adding a Minecraft line means adding its branch
+  to the list in that workflow and keeping `build-jar.yml` on it.
 - Never create scratch branches. Do the work on the branch that owns it.
 
 ## 4. Versioning, changelog and commits
 
 ### `version.txt` is the single version source
 
-`version.txt` holds one line, the mod version only, for example `1.3.1`.
-`build.gradle` reads it (`version = file('version.txt').text.trim()`), sets the
-archive name to `<mod>-<minecraft_version>-<version>` and `processResources`
-expands the version into `fabric.mod.json`. The jar is therefore
-`dedicatedpower-26.3-1.3.1.jar`: the Minecraft version appears in the file name
-and nowhere else. **Do not add a second copy of the version anywhere**, and do
-not edit the jar name or the metadata by hand.
+`version.txt` holds one line, `<minecraft>-<mod version>`, for example
+`26.3-1.3.2` on `mc-26.3` and `26.2-1.3.2` on `mc-26.2`. The Minecraft prefix
+must match the branch. `build.gradle` reads the whole line
+(`version = file('version.txt').text.trim()`), names the archive
+`<mod>-<version>` and `processResources` expands the version into
+`fabric.mod.json`. The jar is therefore `dedicatedpower-26.3-1.3.2.jar`.
+`Auto Release` reads the same file and uses the part after the first hyphen as
+its tag and title, so every branch of one release shares the mod version.
+**Do not add a second copy of the version anywhere**, and do not edit the jar
+name or the metadata by hand.
 
 - **MINOR** (`1.3.0` -> `1.4.0`): new features.
 - **PATCH** (`1.3.0` -> `1.3.1`): compatible fixes and documentation-only
   program changes.
 - **MAJOR**: only for genuinely breaking changes.
 - The Minecraft target lives in `gradle.properties` (`minecraft_version`) and
-  in the jar file name. It never goes into `version.txt`, a release tag or a
-  release title.
+  in the jar file name. It never goes into a release tag or a release title:
+  only the mod part of `version.txt` is used for those.
 - When the owner names the segment in the message, use that segment for that
   message only.
 
@@ -112,9 +117,9 @@ quotations of a report or of the owner's own words.
 
 - **Every commit that changes program code starts with `v`**, for example
   `v: fix MOTD encoding and console completion`. The title does not carry the
-  version: `Auto Release` reads `version.txt` on `main` and uses that value for
-  the tag and the release title. On a version branch the prefix only triggers
-  the normal build, because releases are published from `main` only.
+  version: `Auto Release` reads `version.txt` on `main` and uses the mod part of
+  it for the tag and the release title. On a version branch the prefix only
+  triggers the normal build, because releases are published from `main` only.
 - **English only**, title and body.
 - **No co-author, no attribution footer.** Never add `Co-Authored-By:` or
   "Generated with" lines, and never credit the agent or the client.
@@ -136,6 +141,11 @@ quotations of a report or of the owner's own words.
 - **Theme switch must reach open windows.** `ThemeManager.applyTo(window)`
   updates the tree and every open window; components with custom painting
   implement `ThemeManager.ThemeListener`.
+- **A theme pass must never move a caret.** `SwingUtilities.updateComponentTreeUI`
+  reinstalls the UI and resets every text component to position 0, and
+  `applyTo` runs whenever any window opens. It captures the caret and the
+  selection first and restores them on the same event dispatch turn; keep that
+  behaviour when changing the theme code.
 - **MOTD text goes through `MotdTextUtils`.** It repairs mojibake, decodes
   `\u00A7` / `/u00A7` escapes, normalizes line endings and enforces the two-line
   limit. Never parse formatting codes anywhere else.
@@ -158,9 +168,8 @@ quotations of a report or of the owner's own words.
 
 ## 6. Build and verification
 
-Requirements: JDK 25. The wrapper ships the Gradle version the branch's Loom
-needs: Gradle 9.8.2 with Loom 1.19 on `mc-26.3`, Gradle 9.5.1 with Loom 1.17 on
-`mc-26.2`. Both compile with `--release 25`, so the build needs a JDK 25.
+Requirements: JDK 25. Loom 1.19 requires Gradle 9.8 or newer, so the wrapper
+ships Gradle 9.8.2.
 
 ```bash
 ./gradlew build          # compile, run tests, build the jar
@@ -222,8 +231,17 @@ when it is loaded from an older file.
 
 **Command suggestions disappeared.** They had been reduced to `TAB` because
 live completion once reordered typed characters. The document listener now only
-schedules a refresh; the popup never edits the command field, so characters
-cannot move. Suggestions appear while typing, on `TAB`, and for a leading `/`.
+schedules a refresh and the popup never edits the command field. Suggestions
+appear while typing, on `TAB`, and for a leading `/`.
+
+**Typed characters were still reordered (`give` became `iveg`).** The
+completion popup is a `JWindow`, and opening it fires `WINDOW_OPENED`, which
+made `ThemeManager` run a full theme pass. `updateComponentTreeUI` reinstalls
+the text UI and moves the command caret to 0, so every later character was
+inserted in front of the first one; `/give` became `give/`. The theme pass now
+saves and restores the caret and the selection of every text component in the
+same event dispatch turn. Do not remove that capture/restore pair, and never
+call `updateComponentTreeUI` or `updateUI` on a window the user is typing in.
 
 **Registry ids complete with the default namespace.** An argument that is a
 known registry id (`oak_button`) is shown and inserted as
