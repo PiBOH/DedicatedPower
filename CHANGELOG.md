@@ -1,5 +1,23 @@
 # Changelog
 
+## [26.3-1.3.0] - 2026-10-29
+
+### Added
+- Live command suggestions while typing, with or without a leading slash, in addition to `Tab` completion
+- Registry ids are completed with the default namespace, so `oak_button` becomes `minecraft:oak_button`, like the Aternos console
+- The console now prints a message when the GUI is closed, mirroring the existing `/opengui` message
+- JUnit coverage for the UTF-8 properties round trip and for the completion rules
+
+### Changed
+- Updated to Minecraft 26.3 with Fabric Loader 0.20.1, Fabric API 0.165.0+26.3, Fabric Loom 1.19.3 and Gradle 9.8.2
+- `version.txt` is now the only place the mod version is defined; the build and the jar metadata read it
+- `server.properties` and the saved MOTD history are read and written as UTF-8, with an ISO-8859-1 fallback for files written by older builds
+
+### Fixed
+- MOTD formatting codes no longer turn into `Â§` when a MOTD is saved from the editor
+- The memory, average tick, TPS, entities, chunks and uptime lines, together with the graph tooltip, now follow the theme and are readable in Dark mode
+- Command suggestions appear again while typing; the popup never edits the command field, so typed characters keep their order
+
 ## [26.2-1.2.17] - 2026-08-11
 
 ### Fixed

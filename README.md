@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-26.2-2E7D32?style=for-the-badge&logo=minecraft" alt="Minecraft 26.2">
-  <img src="https://img.shields.io/badge/Fabric-0.19.3%2B-1769aa?style=for-the-badge&logo=fabric" alt="Fabric">
+  <img src="https://img.shields.io/badge/Minecraft-26.3-2E7D32?style=for-the-badge&logo=minecraft" alt="Minecraft 26.3">
+  <img src="https://img.shields.io/badge/Fabric-0.20.1%2B-1769aa?style=for-the-badge&logo=fabric" alt="Fabric">
   <img src="https://img.shields.io/badge/Java-25%2B-orange?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 25+">
 </p>
 
@@ -27,10 +27,10 @@ It replaces the default server administration window with a cleaner interface fo
 
 ## Compatibility
 
-- **Minecraft:** Java Edition 26.2 (Chaos Cubed)
+- **Minecraft:** Java Edition 26.3
 - **Platform:** Fabric
 - **Environment:** Dedicated servers only
-- **Fabric Loader:** 0.19.3 or newer
+- **Fabric Loader:** 0.20.1 or newer
 - **Java:** 25 or newer
 - **License:** MIT
 
@@ -56,7 +56,9 @@ DedicatedPower is not intended for single-player worlds or the integrated server
 
 - Live server log output with color-coded log levels
 - Dedicated command console panel
-- Command execution directly from the GUI
+- Command execution directly from the GUI, with or without a leading slash
+- Live command suggestions while typing and on Tab
+- Registry ids complete with the default namespace: `oak_button` becomes `minecraft:oak_button`
 - Command history with the Up and Down arrow keys
 - Clearable console output
 
@@ -77,8 +79,8 @@ DedicatedPower is not intended for single-player worlds or the integrated server
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 26.2.
-2. Install [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.2.
+1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 26.3.
+2. Install [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.3.
 3. Install Java 25 or newer.
 4. Download the latest DedicatedPower release from the [Releases](https://github.com/PiBOH/DedicatedPower/releases) page.
 5. Place the DedicatedPower `.jar` file in the server's `mods` folder.
@@ -90,11 +92,14 @@ Always make a backup of your server before installing or updating mods.
 
 DedicatedPower is loaded automatically when the dedicated server starts. The enhanced server window is created by the mod and can be used to monitor the server and run commands. The console panel streams live server log output with color-coded levels and accepts commands entered through the GUI.
 
-Use the **Server**, **World**, and **Tools** menus to access the available controls. Commands should be entered without the leading slash, for example:
+Use the **Server**, **World**, and **Tools** menus to access the available controls. Commands can be entered with or without the leading slash, for example:
 
 ```text
 save-all
+/save-all
 ```
+
+Suggestions follow what you type: the list opens above the input, `Tab` applies the selected entry, `Up` and `Down` move through the list (or through the command history when it is closed), and `Esc` dismisses it. Registry ids are completed with the default namespace, so typing `oak` offers `minecraft:oak_button`.
 
 ## Building from source
 
@@ -124,7 +129,7 @@ The compiled files are generated in `build/libs/`.
 
 ## Development status
 
-DedicatedPower is actively being updated for Minecraft 26.2. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions.
+DedicatedPower is actively being updated for Minecraft 26.3. The project uses the official Minecraft names and the non-remapping Fabric Loom toolchain introduced for newer unobfuscated Minecraft versions. The previous Minecraft 26.2 build is kept on its own branch.
 
 The project currently focuses on the dedicated server GUI and administration workflow. Some advanced features from earlier versions may be reintroduced or expanded in future updates.
 
@@ -132,7 +137,7 @@ The project currently focuses on the dedicated server GUI and administration wor
 
 Before opening an issue, make sure that:
 
-- You are using Minecraft 26.2.
+- You are using Minecraft 26.3.
 - You are using Java 25 or newer.
 - You are using compatible Fabric Loader and Fabric API versions.
 - You have searched existing issues.

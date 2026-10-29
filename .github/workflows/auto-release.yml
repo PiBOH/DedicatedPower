@@ -3,7 +3,10 @@ name: Auto Release
 on:
   push:
     branches:
+      # One release per supported Minecraft branch: each branch builds and
+      # publishes the jar it carries when a v-prefixed commit reaches it.
       - mc-26.2
+      - mc-26.3
   workflow_dispatch:
     inputs:
       version:

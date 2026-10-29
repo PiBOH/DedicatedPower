@@ -7,11 +7,8 @@
 package net.supersirvu.gui;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -29,9 +26,9 @@ public final class MotdHistoryStore {
             return state;
         }
 
-        Properties properties = new Properties();
-        try (InputStream input = Files.newInputStream(FILE)) {
-            properties.load(input);
+        Properties properties;
+        try {
+            properties = Utf8Properties.load(FILE);
             state.enabled = Boolean.parseBoolean(properties.getProperty("enabled", "true"));
             int count = Integer.parseInt(properties.getProperty("count", "0"));
             for (int index = 0; index < count; index++) {
@@ -55,11 +52,7 @@ public final class MotdHistoryStore {
         }
 
         try {
-            Files.createDirectories(FILE.getParent());
-            try (OutputStream output = Files.newOutputStream(FILE,
-                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-                properties.store(output, "DedicatedPower MOTD history");
-            }
+            Utf8Properties.store(FILE, properties, "DedicatedPower MOTD history");
         } catch (IOException ignored) {
             // MOTD editing remains functional when history persistence is unavailable.
         }

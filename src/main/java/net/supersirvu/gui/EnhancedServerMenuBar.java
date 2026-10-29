@@ -8,6 +8,7 @@ package net.supersirvu.gui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
@@ -30,7 +31,6 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -136,12 +136,12 @@ public class EnhancedServerMenuBar extends JMenuBar {
         dialog.setSize(600, 500);
         dialog.setLocationRelativeTo(parentFrame);
 
-        // Load server.properties
+        // Load server.properties with the same UTF-8 encoding Minecraft uses.
         File propertiesFile = new File("server.properties");
-        Properties properties = new Properties();
+        Properties properties;
 
-        try (FileInputStream fis = new FileInputStream(propertiesFile)) {
-            properties.load(fis);
+        try {
+            properties = Utf8Properties.load(propertiesFile.toPath());
         } catch (IOException e) {
             JOptionPane.showMessageDialog(dialog, "Failed to load server.properties: " + e.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
@@ -176,8 +176,9 @@ public class EnhancedServerMenuBar extends JMenuBar {
             }
 
             // Save to file
-            try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
-                properties.store(fos, "Minecraft server properties - Modified via GUI");
+            try {
+                Utf8Properties.store(propertiesFile.toPath(), properties,
+                        "Minecraft server properties - Modified via GUI");
                 JOptionPane.showMessageDialog(dialog, "Properties saved! Restart server for changes to take effect.",
                         "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
@@ -1662,9 +1663,9 @@ public class EnhancedServerMenuBar extends JMenuBar {
 
     private void updateServerPropertiesMotd(String motd) {
         Path path = Path.of("server.properties");
-        Properties properties = new Properties();
-        try (InputStream input = Files.newInputStream(path)) {
-            properties.load(input);
+        Properties properties;
+        try {
+            properties = Utf8Properties.load(path);
         } catch (IOException error) {
             if (Files.exists(path)) {
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentFrame,
@@ -1673,11 +1674,11 @@ public class EnhancedServerMenuBar extends JMenuBar {
                 return;
             }
             // A missing properties file can be created normally.
+            properties = new Properties();
         }
         properties.setProperty("motd", motd);
-        try (OutputStream output = Files.newOutputStream(path,
-                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            properties.store(output, "Minecraft server properties - Modified via DedicatedPower");
+        try {
+            Utf8Properties.store(path, properties, "Minecraft server properties - Modified via DedicatedPower");
         } catch (IOException error) {
             SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentFrame,
                     "MOTD applied in memory, but server.properties could not be saved: " + error.getMessage(),
@@ -2288,9 +2289,17 @@ public class EnhancedServerMenuBar extends JMenuBar {
                     // Hide only the GUI window; retain the frame so /opengui can
                     // show the same window again without creating a duplicate.
                     frame.setVisible(false);
+                    // Mirror the message the GUI prints when /opengui finds it
+                    // already open, so the console always says what happened.
+                    server.execute(() -> server.createCommandSourceStack().sendSuccess(
+                            () -> Component.literal("The DedicatedPower GUI has been closed; the server keeps running."),
+                            false));
                 } else if (choice == 1) {
                     // The server is shutting down; do not retain a reusable GUI frame.
                     net.supersirvu.ServerGuiState.setFrame(null);
+                    server.execute(() -> server.createCommandSourceStack().sendSuccess(
+                            () -> Component.literal("The DedicatedPower GUI has been closed and the server is shutting down."),
+                            false));
                     // Gracefully stop the server on a background thread: the GUI stays
                     // responsive (the log keeps updating) while worlds are saved, then
                     // the JVM exits as soon as the server has fully stopped.
